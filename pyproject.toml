@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "barber-llm"
+version = "0.1.0"
+description = "Query-aware context trimming for LLM requests. Your context could use a trim."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Nadir" }]
+keywords = ["llm", "context", "tokens", "prompt-compression", "rag", "cost"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []
+
+[project.optional-dependencies]
+semantic = ["sentence-transformers"]
+eval = ["datasets", "openai", "tiktoken"]
+tokens = ["tiktoken"]
+
+[project.urls]
+Homepage = "https://getnadir.com"
+Source = "https://github.com/NadirRouter/barber"
+
+[project.scripts]
+barber-eval = "barber.eval.harness:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["barber"]
+
+[tool.hatch.build.targets.sdist]
+include = ["barber", "tests", "docs", "README.md", "LICENSE", "pyproject.toml"]
