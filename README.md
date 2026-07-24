@@ -44,14 +44,18 @@ dependencies. Extras when you want them:
 
 ## Quickstart
 
-Zero-dependency lexical mode:
+Zero-dependency lexical mode, runnable as pasted:
 
 ```python
 from barber import trim
 
-result = trim(messages)                  # OpenAI-style list[dict], keep=0.6
-send_to_your_llm(result.messages)        # same conversation, fewer tokens
+context = "\n\n".join(f"Passage {i}: facts about topic {i}." for i in range(40))  # your RAG block
+messages = [{"role": "user", "content": context},
+            {"role": "user", "content": "What do the passages say about topic 7?"}]
+
+result = trim(messages)   # keep=0.6, lexical fallback, zero deps
 print(result.tokens_saved, result.chunks_dropped, result.changed)
+# result.messages is the same conversation, fewer tokens; send it to your LLM
 ```
 
 Semantic mode, the configuration the benchmark shipped with:
@@ -133,10 +137,10 @@ pip install "barber-llm[eval]" && barber-eval --n 200 --keep 0.6 --size large
    [… 4 passage(s) omitted as not relevant to this question — the remaining context is sufficient …]
    ```
 
-   The assertive wording is deliberate and benchmark-locked. A neutral
-   "lower-relevance passages omitted" primes refusals; this one tells the
-   model to proceed. Re-run that ablation yourself with
-   `barber-eval --marker neutral`.
+   The assertive wording is deliberate and benchmark-locked: it won our
+   marker ablation. The working theory is that a neutral "lower-relevance
+   passages omitted" invites the model to hedge, while this one tells it to
+   proceed. Re-run the ablation yourself with `barber-eval --marker neutral`.
 
 Decisions are memoized on the block hash alone, never the query. The first
 turn to see a block decides it; every later turn replays the decision
@@ -150,7 +154,7 @@ cache keeps hitting.
 - **No letter tricks.** Dropping vowels, truncating words, gzip-then-base64:
   in the same benchmark, every character-level scheme cost MORE tokens, not
   fewer. Letter removal measured 1.34x to 1.69x the tokens; classic
-  compression 3.2x to 3.7x. Tokenizers already are compressors; fighting them
+  compression 3.2x to 3.7x. Tokenizers are already compressors; fighting them
   backfires. [The numbers](https://getnadir.com/blog/context-selection-benchmark-minimax.html).
 - **No history compaction.** Providers do that natively now, and re-writing
   old turns busts their prompt caches. barber targets fresh retrieved context
@@ -166,8 +170,9 @@ the answer and nothing errors, the model just answers worse. barber ships with
 every guard on:
 
 - **Deontic and PII pinning.** Chunks with constraint language ("must",
-  "never", "do not", "prohibited", "required", "only if") or sensitive-data
-  markers (PII, HIPAA, PCI, SSN, password, secret, API key) are never dropped.
+  "never", "do not", "don't", "shall not", "prohibited", "required",
+  "only if") or sensitive-data markers (PII, HIPAA, PCI, SSN, password,
+  secret, API key) are never dropped.
 - **Rare-query-entity pinning.** A query term that appears in only one or two
   chunks of a block is a strong "this chunk answers the question" signal.
   Those chunks are never dropped, which is what protects multi-hop questions.
