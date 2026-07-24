@@ -42,14 +42,17 @@ class Cache(OrderedDict):
         self.maxsize = maxsize
 
     def __getitem__(self, key):
+        value = super().__getitem__(key)   # raises KeyError before we touch order
         self.move_to_end(key)
-        return super().__getitem__(key)
+        return value
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
         self.move_to_end(key)
-        if len(self) > self.maxsize:
-            self.popitem(last=False)
+        while len(self) > self.maxsize:
+            # not popitem(): on CPython 3.10 it dispatches through __getitem__,
+            # which re-enters this class mid-eviction and raises KeyError.
+            del self[next(iter(self))]
 
 
 @dataclass
