@@ -80,11 +80,48 @@ decided once, then replayed byte-identically on every later turn, so your
 provider prompt cache stays warm:
 
 ```python
-from barber import make_transform
+from barber import make_transform, Cache
 
-name, fn = make_transform(embedder=embed, keep=0.6, cache=shared_dict)
+cache = Cache()                          # bounded LRU, safe for a long-running process
+name, fn = make_transform(embedder=embed, keep=0.6, cache=cache)
 messages, changed = fn(messages)         # call this every turn
 ```
+
+A plain dict works too, but it never evicts: one entry per distinct context
+block for the life of the process. `Cache(maxsize=4096)` bounds it. Keep
+`maxsize` above your live-conversation count, because evicting a block means
+the next turn decides it again against the then-current question.
+
+## When barber does nothing
+
+`trim()` returns `changed=False` and leaves your messages untouched unless some
+message meets every one of these:
+
+| Requirement | Why |
+|---|---|
+| Role is `user`, `tool`, or `function` | System and assistant messages are never touched. |
+| Not the latest user message | That message is the question, and the question is never trimmed. |
+| `content` is a plain string | Content-parts lists (`[{"type": "text", ...}]`) are skipped. |
+| At least 800 characters | Anything shorter is not retrieved context. |
+| At least 4 chunks | Below that there is nothing to choose between. |
+
+The common surprise is the single-message shape. This is a no-op, because the
+only message present is the question:
+
+```python
+messages = [{"role": "user", "content": f"Context:\n{docs}\n\nQuestion: {q}"}]
+```
+
+Give the context its own message and barber has something to work with:
+
+```python
+messages = [{"role": "user", "content": docs},
+            {"role": "user", "content": q}]
+```
+
+Most APIs accept consecutive user messages. If yours does not, put the context
+in a `tool` or `function` message, which is where retrieved context usually
+arrives anyway.
 
 ## The benchmark
 
@@ -182,7 +219,8 @@ every guard on:
 - **Relevance floor (0.35).** A chunk scoring far below the block's top chunk
   is noise even if the budget has room for it.
 - **Never touched at all:** the latest user message, system messages,
-  assistant messages, any message under 800 chars, any block under 4 chunks.
+  assistant messages, non-string content, any message under 800 chars, any
+  block under 4 chunks. See [when barber does nothing](#when-barber-does-nothing).
 
 In the benchmark these guards held answer-paragraph retention at 100% in both
 published sizes ([table above](#the-benchmark)).
