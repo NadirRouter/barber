@@ -59,6 +59,11 @@ print(result.tokens_saved, result.chunks_dropped, result.changed)
 # result.messages is the same conversation, fewer tokens; send it to your LLM
 ```
 
+`tokens_saved` is signed. Each dropped run costs about 20 tokens of marker, so
+on blocks with many small, scattered chunks the markers can cost more than the
+drops save. A negative number is barber telling you this shape is not worth
+trimming, so skip it or raise `keep`.
+
 Semantic mode, the configuration the benchmark shipped with:
 
 ```python
@@ -88,9 +93,15 @@ messages, changed = fn(messages)         # call this every turn
 ```
 
 A plain dict works too, but it never evicts: one entry per distinct context
-block for the life of the process. `Cache(maxsize=4096)` bounds it. Keep
-`maxsize` above your live-conversation count, because evicting a block means
-the next turn decides it again against the then-current question.
+block for the life of the process. `Cache` bounds it and is thread-safe, so a
+threaded server can share one. Two things to size against:
+
+- An entry holds one whole trimmed block, so the bound is a count, not a byte
+  budget. At `maxsize=4096` with large RAG blocks that is hundreds of megabytes
+  per process. Lower it if your blocks are big.
+- Keep `maxsize` above your live-conversation count. Evicting a block means the
+  next turn decides it again against the then-current question, which is the
+  prefix churn the cache exists to prevent.
 
 ## When barber does nothing
 

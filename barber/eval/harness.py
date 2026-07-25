@@ -308,9 +308,18 @@ def main():
         mat_worse += int(tw)
 
     print("\n" + "="*60)
+    if not judged or not tok_full:
+        # Every judge response failed to parse, or the slice was empty. Say so
+        # instead of dying in a ZeroDivisionError after paying for the whole run.
+        print(f"NOTHING TO REPORT  size={args.size}  n_judged={judged}  "
+              f"judge_parse_dropped={getattr(main,'_dropped',0)}  ctx_tokens={tok_full}")
+        print("Check --n/--offset for an empty slice, and JUDGE_MODEL for a judge")
+        print("whose replies never parse as JSON (run --baseline first to sanity-check).")
+        print("="*60)
+        return
     print(f"size={args.size}  keep_ratio={args.keep}  n_judged={judged}  judge_parse_dropped={getattr(main,'_dropped',0)}  gen_truncated={getattr(chat,'truncated',0)}  avg_ctx_tokens={tok_full//max(1,judged)}")
     print(f"tokens saved:            {(1-tok_sel/tok_full)*100:5.1f}%")
-    print(f"gold-paragraph recall:   {gold_kept/gold_tot*100:5.1f}%")
+    print(f"gold-paragraph recall:   {gold_kept/max(1,gold_tot)*100:5.1f}%")
     print(f"control accuracy:        {ctrl_correct/judged*100:5.1f}%")
     print(f"treatment accuracy:      {treat_correct/judged*100:5.1f}%")
     print(f"REGRESSION RATE:         {regressions/judged*100:5.1f}%   <- gate on this (<1-2%)")

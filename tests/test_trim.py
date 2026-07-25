@@ -1,7 +1,7 @@
 """trim() mechanics: what gets trimmed, what is never touched, marker accounting."""
 import re
 
-from barber import trim
+from barber import trim, Cache
 from barber.core import SelectionConfig
 
 # The locked default marker (benchmark-validated wording). If this assertion
@@ -81,6 +81,37 @@ def test_latest_user_message_is_never_trimmed():
     assert result.messages[-1]["content"] == QUERY
 
 
+def test_the_question_itself_is_never_trimmed_even_when_selectable():
+    """The earlier no-op case passes even without the guard, because those
+    messages fail the size/chunk gates anyway. This one is fully selectable:
+    long, chunky, repeated vocabulary so no chunk is rare-pinned. Only the
+    latest-user-message guard keeps it intact."""
+    rows = "\n\n".join(
+        f"2026-07-24T10:0{i}:11 worker-{i} retry attempt {i} for request routing "
+        f"in the retry queue, retry backoff applied to the routing worker."
+        for i in range(12))
+    pasted = f"Here is the log I pasted, please explain the retries:\n\n{rows}"
+    assert len(pasted) >= 800
+    messages = [{"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": pasted}]
+    result = trim(messages, keep=0.4)
+    assert result.messages[-1]["content"] == pasted, "the user's own question was trimmed"
+    assert result.changed is False
+    assert result.chunks_dropped == 0
+
+
+def test_tool_and_function_messages_are_selectable():
+    """Large tool output is the headline use case and had no positive test:
+    only the negative system/assistant cases were covered."""
+    context = block(TOPICS)
+    for role in ("tool", "function"):
+        result = trim([{"role": role, "content": context},
+                       {"role": "user", "content": QUERY}], keep=0.4)
+        assert result.changed is True, f"{role} message was not selected"
+        assert result.chunks_dropped > 0, f"{role} message lost no chunks"
+        assert MARKER_RE.search(result.messages[0]["content"]), f"no marker in {role} output"
+
+
 def test_system_message_is_never_trimmed():
     sys_text = block(TOPICS)
     messages = [{"role": "system", "content": sys_text}] + msgs(block(TOPICS))
@@ -118,6 +149,35 @@ def test_block_under_800_chars_is_a_noop():
     assert result.messages[0]["content"] == context
     assert result.changed is False
     assert result.chunks_dropped == 0
+
+
+def test_chunks_dropped_survives_a_warm_cache():
+    """chunks_dropped used to come from SelectionStats, which core only writes
+    when it actually selects. On a cache hit it stayed zero while the content
+    was still trimmed, so every turn after the first under-reported."""
+    cache = Cache()
+    messages = msgs(block(TOPICS))
+    reports = [trim(messages, keep=0.6, cache=cache) for _ in range(3)]
+    assert all(r.changed for r in reports)
+    counts = [r.chunks_dropped for r in reports]
+    assert counts[0] > 0
+    assert len(set(counts)) == 1, f"chunks_dropped drifted across turns: {counts}"
+    # and it still agrees with the markers actually present
+    present = [t in reports[-1].messages[0]["content"] for t in TOPICS]
+    assert counts[-1] == present.count(False)
+
+
+def test_tokens_saved_is_signed_when_markers_cost_more():
+    """Scattered drops emit one marker each, and a marker is ~20 tokens. When
+    the chunks are small that is a net loss, and clamping it to 0 made a real
+    regression indistinguishable from a clean no-op."""
+    rows = "\n\n".join(f"row {i} alpha beta" if i % 2 else f"row {i} refund policy detail here"
+                       for i in range(40))
+    result = trim(msgs(rows, "refund policy?"), keep=0.5)
+    assert result.changed is True
+    assert result.chunks_dropped > 0
+    assert result.tokens_saved < 0, (
+        f"expected a net loss to surface as a negative, got {result.tokens_saved}")
 
 
 def test_changed_flag_matches_output():
