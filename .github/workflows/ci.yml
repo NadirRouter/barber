@@ -36,3 +36,25 @@ jobs:
           pip install build twine
           python -m build
           twine check dist/*
+
+  node:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["18", "20", "22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Golden fixtures are fresh
+        run: |
+          pip install .
+          python tests/gen_golden.py --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: JS parity and unit tests
+        run: node --test
+        working-directory: js

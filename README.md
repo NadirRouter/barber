@@ -43,6 +43,21 @@ dependencies. Extras when you want them:
 | `barber-llm[tokens]` | `tiktoken` | exact token counts in `TrimResult` |
 | `barber-llm[eval]` | `datasets`, `openai`, `tiktoken` | the `barber-eval` benchmark harness |
 
+JavaScript is a first-class citizen too. The [npm package](https://www.npmjs.com/package/barber-llm)
+is a zero-dependency port of the same algorithm with the same defaults, kept
+decision-identical to this package by golden fixtures regenerated from the
+Python implementation and replayed in CI ([js/](js/)):
+
+```bash
+npm install barber-llm
+```
+
+or one-shot from the shell:
+
+```bash
+npx barber-llm --keep 0.6 < messages.json > trimmed.json
+```
+
 ## Quickstart
 
 Zero-dependency lexical mode, runnable as pasted:

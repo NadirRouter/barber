@@ -1,0 +1,485 @@
+{
+ "barberVersion": "0.1.1",
+ "cases": [
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 5,
+    "messages": [
+     {
+      "content": "You are a concise support assistant for Meridian.",
+      "role": "system"
+     },
+     {
+      "content": "Meridian is a distributed job scheduler for data teams. This page collects operational notes gathered from production deployments across three release lines and the managed cloud.\n\nWhen a job fails, Meridian applies exponential retry backoff: the first retry waits ten seconds, and each further attempt doubles the delay up to a ceiling of fifteen minutes per queue.\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nRetry budgets are configurable per queue: a job that exhausts its retry allowance is parked in the dead letter queue and Meridian stops scheduling further attempts for it.\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nA failed job records its final error, the attempt count, and the last worker id. These fields surface in the failures view and export cleanly to CSV for postmortems.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nSupport hours are Monday through Friday, nine to five UTC. Enterprise plans add a paged on-call rotation with a fifteen minute response target for incidents.",
+      "role": "user"
+     },
+     {
+      "content": "How does Meridian handle retry backoff for failed jobs?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 140
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "You are a concise support assistant for Meridian.",
+     "role": "system"
+    },
+    {
+     "content": "Meridian is a distributed job scheduler for data teams. This page collects operational notes gathered from production deployments across three release lines and the managed cloud.\n\nWhen a job fails, Meridian applies exponential retry backoff: the first retry waits ten seconds, and each further attempt doubles the delay up to a ceiling of fifteen minutes per queue.\n\nThe dashboard ships with three color themes. Theme selection lives under profile preferences and applies per browser, not per account, so each workstation remembers its own choice.\n\nBilling is metered per executed task minute. Invoices are issued on the first business day of the month and unused committed minutes roll over for one quarter before expiring.\n\nRetry budgets are configurable per queue: a job that exhausts its retry allowance is parked in the dead letter queue and Meridian stops scheduling further attempts for it.\n\nInstallation on bare metal uses the meridian-agent package from our apt and yum repositories. Containerized installs pull the signed image from the public registry mirror.\n\nThe company logo went through four revisions before the current compass rose design. Early drafts featured a stylized crane, retired after a round of user testing.\n\nA failed job records its final error, the attempt count, and the last worker id. These fields surface in the failures view and export cleanly to CSV for postmortems.\n\nKeyboard shortcuts: press g then q to jump to queues, g then w for workers, and question mark to open the shortcut overlay from any screen in the dashboard.\n\nSupport hours are Monday through Friday, nine to five UTC. Enterprise plans add a paged on-call rotation with a fifteen minute response target for incidents.",
+     "role": "user"
+    },
+    {
+     "content": "How does Meridian handle retry backoff for failed jobs?",
+     "role": "user"
+    }
+   ],
+   "name": "rag_basic"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 3,
+    "messages": [
+     {
+      "content": "Answer from the provided context only.",
+      "role": "system"
+     },
+     {
+      "content": "Reports overview: Corvid Analytics generates weekly summaries, ad hoc snapshots, and scheduled exports for every workspace on the growth plan and above.\n\nScheduled report exports are capped at two hundred megabytes per file; larger result sets are split into numbered parts and delivered together as a single archive.\n\nAll customer records must be encrypted at rest, and access to raw exports is limited to workspace administrators.\n\nRotate the api_key used by the export webhook every ninety days; rotation happens in the integrations panel and takes effect within one minute.\n\n[\u2026 3 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nHistorical note: the exporter was rewritten in 2024 to stream rows instead of buffering whole result sets in memory, cutting peak usage by an order of magnitude.",
+      "role": "tool"
+     },
+     {
+      "content": "What is the export size limit for scheduled reports?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 95
+   },
+   "keep": 0.45,
+   "messages": [
+    {
+     "content": "Answer from the provided context only.",
+     "role": "system"
+    },
+    {
+     "content": "Reports overview: Corvid Analytics generates weekly summaries, ad hoc snapshots, and scheduled exports for every workspace on the growth plan and above.\n\nScheduled report exports are capped at two hundred megabytes per file; larger result sets are split into numbered parts and delivered together as a single archive.\n\nAll customer records must be encrypted at rest, and access to raw exports is limited to workspace administrators.\n\nRotate the api_key used by the export webhook every ninety days; rotation happens in the integrations panel and takes effect within one minute.\n\nChart colors follow the workspace palette. Custom palettes accept up to twelve hex values and fall back to the default ramp when a series runs past the last color.\n\nThe mobile app renders dashboards read-only. Editing layouts, changing owners, and archiving boards remain desktop actions in this release cycle.\n\nExport delivery destinations include email, object storage buckets, and the webhook relay; deliveries that bounce are retried three times before alerting the owner.\n\nHistorical note: the exporter was rewritten in 2024 to stream rows instead of buffering whole result sets in memory, cutting peak usage by an order of magnitude.",
+     "role": "tool"
+    },
+    {
+     "content": "What is the export size limit for scheduled reports?",
+     "role": "user"
+    }
+   ],
+   "name": "pin_deontic_and_pii"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 4,
+    "messages": [
+     {
+      "content": "Logistics digest for the third week of March, covering inbound freight, carrier performance, and warehouse throughput across the Rotterdam and Halifax lanes.\n\n[\u2026 3 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nThe zephyrite shipment sat in a customs inspection queue for six days because the mineral classification code on the manifest disagreed with the code in the import permit.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nNext digest lands in two weeks; send corrections to the logistics channel before Thursday to make the editorial cutoff for the print edition.",
+      "role": "user"
+     },
+     {
+      "content": "Why did the zephyrite shipment clear customs late?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 103
+   },
+   "keep": 0.45,
+   "messages": [
+    {
+     "content": "Logistics digest for the third week of March, covering inbound freight, carrier performance, and warehouse throughput across the Rotterdam and Halifax lanes.\n\nCarrier on-time performance dipped to ninety one percent, driven by winter storms along the northern corridor and a dockworker slowdown at the transfer hub.\n\nWarehouse throughput held steady at four thousand pallets per day, with pick accuracy at ninety nine point six percent after the scanner firmware update.\n\nInsurance premiums for high value freight renew in April; the broker projects a low single digit increase given the year's clean loss history.\n\nThe zephyrite shipment sat in a customs inspection queue for six days because the mineral classification code on the manifest disagreed with the code in the import permit.\n\nFuel surcharges tick down two percent next quarter under the new carrier agreement, applied automatically to lanes billed on the standard rate card.\n\nNext digest lands in two weeks; send corrections to the logistics channel before Thursday to make the editorial cutoff for the print edition.",
+     "role": "user"
+    },
+    {
+     "content": "Why did the zephyrite shipment clear customs late?",
+     "role": "user"
+    }
+   ],
+   "name": "rare_entity_multihop"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 1,
+    "messages": [
+     {
+      "content": "Assembly line notes for the model twelve conveyor, collected by the maintenance crew during the spring service window and shared with the floor leads ahead of the summer production push.\n\nSprocket alignment tolerance is half a millimeter measured at the drive shaft; re-check the sprocket alignment after any belt swap because tolerance drift compounds over a full shift.\n\nDuring sprocket alignment the crew locks the drive, marks the datum edge, and torques the carrier bolts in a star pattern before measuring runout with the dial indicator.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nGeneral housekeeping: return torque wrenches to the shadow board and log consumables in the bin ledger before the end of each shift so the next crew starts from a clean count.",
+      "role": "user"
+     },
+     {
+      "content": "What is the sprocket alignment tolerance on the drive shaft?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 15
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "Assembly line notes for the model twelve conveyor, collected by the maintenance crew during the spring service window and shared with the floor leads ahead of the summer production push.\n\nSprocket alignment tolerance is half a millimeter measured at the drive shaft; re-check the sprocket alignment after any belt swap because tolerance drift compounds over a full shift.\n\nDuring sprocket alignment the crew locks the drive, marks the datum edge, and torques the carrier bolts in a star pattern before measuring runout with the dial indicator.\n\nA worn sprocket shows hooked teeth under the inspection lamp; swap it in pairs with its chain so the sprocket surfaces wear evenly across the whole assembly.\n\nGeneral housekeeping: return torque wrenches to the shadow board and log consumables in the bin ledger before the end of each shift so the next crew starts from a clean count.",
+     "role": "user"
+    },
+    {
+     "content": "What is the sprocket alignment tolerance on the drive shaft?",
+     "role": "user"
+    }
+   ],
+   "name": "bankers_rounding"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 1,
+    "messages": [
+     {
+      "content": "Data pipeline runbook, stage by stage, maintained by the platform group; read the overview before touching production schedules or backfill windows, and record every manual action in the log.\n\nStage one ingests raw events from the collector fleet, validates schemas against the registry, and lands parquet files partitioned by hour into the bronze data bucket for downstream consumers.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nStage two compacts small files, deduplicates on event id, and publishes silver tables consumed by the metrics layer and the feature store refresh that runs every morning before standup.\n\nEscalation path: page the platform rotation for stage failures older than one hour, and file a ticket for anything recoverable by a scheduled backfill in the next maintenance window tonight.",
+      "role": "user"
+     },
+     {
+      "content": "What happens in stage two of the data pipeline?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": -6
+   },
+   "keep": 0.8,
+   "messages": [
+    {
+     "content": "Data pipeline runbook, stage by stage, maintained by the platform group; read the overview before touching production schedules or backfill windows, and record every manual action in the log.\n\nStage one ingests raw events from the collector fleet, validates schemas against the registry, and lands parquet files partitioned by hour into the bronze data bucket for downstream consumers.\n\nTrivia: our first prototype ran on someone's spare laptop under a desk.\n\nStage two compacts small files, deduplicates on event id, and publishes silver tables consumed by the metrics layer and the feature store refresh that runs every morning before standup.\n\nEscalation path: page the platform rotation for stage failures older than one hour, and file a ticket for anything recoverable by a scheduled backfill in the next maintenance window tonight.",
+     "role": "user"
+    },
+    {
+     "content": "What happens in stage two of the data pipeline?",
+     "role": "user"
+    }
+   ],
+   "name": "negative_savings"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 9,
+    "messages": [
+     {
+      "content": "You are the release engineering copilot.",
+      "role": "system"
+     },
+     {
+      "content": "Migration plan for the catalog service, drafted by the data platform team and reviewed in the March architecture sync before the change board sign-off.\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nStep three rebuilds the search index from the migrated tables, streaming documents through the analyzer fleet and swapping the alias once the new index reports healthy.\n\n[\u2026 4 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nStep eight documents the rollback procedure: restore the snapshot, re-point the alias to the previous search index, and revert the feature gate.",
+      "role": "tool"
+     },
+     {
+      "content": "Analysis: the migration plan is sequenced so the search index rebuild lands before user preference migration, which matters because the preference keyspace references document ids that only exist once the new index is live. The canary hour gives the analyzer fleet time to surface tokenization regressions before the alias swap, and the golden query diff is the only step that exercises ranking end to end, so treat a ranking drift there as a blocker rather than a warning. Rollback stays cheap until step four; after preferences migrate, restoring the snapshot loses a day of layout edits, so the decision point for aborting is the end of step three. Cache warmup can overlap the verification window safely since it only issues read traffic at a controlled rate against the new alias.",
+      "role": "assistant"
+     },
+     {
+      "content": "Rollout checklist returned by the release tracker for build 2214, current as of this morning's sync and subject to the change freeze calendar.\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nSearch verification: after the index rebuild completes, run the golden query set and diff the top ten results against the recorded baseline.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nDashboards: pin the migration board to the on-call view for the duration of the rollout and unpin it at the retro.\n\nRetro: schedule the review within one week of completion and attach the timing data from the tracker to the agenda.",
+      "role": "function"
+     },
+     {
+      "content": "Which migration step rebuilds the search index?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 206
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "You are the release engineering copilot.",
+     "role": "system"
+    },
+    {
+     "content": "Migration plan for the catalog service, drafted by the data platform team and reviewed in the March architecture sync before the change board sign-off.\n\nStep one snapshots the primary database and copies the archive to cold storage, tagging the snapshot with the release identifier for later verification.\n\nStep two applies the schema changes behind a feature gate, creating the new columns and backfilling defaults in batches of fifty thousand rows.\n\nStep three rebuilds the search index from the migrated tables, streaming documents through the analyzer fleet and swapping the alias once the new index reports healthy.\n\nStep four migrates user preferences to the new keyspace, preserving timestamps so recently-active sessions keep their unsaved layout choices.\n\nStep five re-registers plugins against the new plugin manifest and disables any plugin that fails its handshake twice in a row.\n\nStep six warms the edge caches by replaying the top ten thousand queries from the previous week at a controlled request rate.\n\nStep seven wires the new dashboards and alert rules, then routes the on-call runbook links to the refreshed monitoring pages.\n\nStep eight documents the rollback procedure: restore the snapshot, re-point the alias to the previous search index, and revert the feature gate.",
+     "role": "tool"
+    },
+    {
+     "content": "Analysis: the migration plan is sequenced so the search index rebuild lands before user preference migration, which matters because the preference keyspace references document ids that only exist once the new index is live. The canary hour gives the analyzer fleet time to surface tokenization regressions before the alias swap, and the golden query diff is the only step that exercises ranking end to end, so treat a ranking drift there as a blocker rather than a warning. Rollback stays cheap until step four; after preferences migrate, restoring the snapshot loses a day of layout edits, so the decision point for aborting is the end of step three. Cache warmup can overlap the verification window safely since it only issues read traffic at a controlled rate against the new alias.",
+     "role": "assistant"
+    },
+    {
+     "content": "Rollout checklist returned by the release tracker for build 2214, current as of this morning's sync and subject to the change freeze calendar.\n\nFeature flags: confirm the catalog gate is off in production and on in staging, with ownership recorded in the flag registry.\n\nCanary: route five percent of traffic to the new build for one hour and compare error rates against the control cohort before widening.\n\nSearch verification: after the index rebuild completes, run the golden query set and diff the top ten results against the recorded baseline.\n\nComms: post the rollout window in the release channel and update the status page banner if customer-visible latency is expected.\n\nDashboards: pin the migration board to the on-call view for the duration of the rollout and unpin it at the retro.\n\nRetro: schedule the review within one week of completion and attach the timing data from the tracker to the agenda.",
+     "role": "function"
+    },
+    {
+     "content": "Which migration step rebuilds the search index?",
+     "role": "user"
+    }
+   ],
+   "name": "multi_block_roles"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": false,
+    "chunksDropped": 0,
+    "messages": [
+     {
+      "content": "You are a support assistant for the Acme knowledge base.",
+      "role": "system"
+     },
+     {
+      "content": "Quick note: the export ran fine yesterday, context attached in the next messages for the real question coming later.",
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "text": "Longform note carried as a content part: the quarterly planning template asks each team to list capacity, committed work, stretch goals, and known risks, then walks through dependency mapping with the partner teams before locking the plan. The template's final section collects the metrics each team will watch weekly, the thresholds that trigger a replan, and the single named owner for every committed line item. Historically the teams that fill in the risk section honestly replan half as often, because the dependency map catches the cross-team collisions while the quarter is still young and the mitigation is still a one-day conversation instead of a two-week scramble. The planning doc closes with a short retro template for the end of the quarter, four questions long, kept deliberately identical across teams so the aggregate rollup stays comparable from one planning cycle to the next without any manual reformatting effort.",
+        "type": "text"
+       }
+      ],
+      "role": "user"
+     },
+     {
+      "content": "First section of the archived onboarding guide, covering account provisioning from the request form through the identity provider group assignments, including the approval chain for elevated roles and the audit trail every approval writes to the compliance ledger for later review by the quarterly access certification campaign, which samples one in five grants and walks the chain backwards to the original request.\n\nSecond section, covering workstation setup: the managed laptop image, the update rings and their deferral windows, the self-service application catalog, and the escalation path when a build tool needs an exception to the standard image, which goes through the platform engineering intake board and comes back with either an approved exception or a supported alternative inside five business days.\n\nThird section, covering the first-week checklist: meet the onboarding buddy, complete the compliance modules, ship a starter change through the full review pipeline, and book the thirty-day check-in with the hiring manager, whose template lives next to this guide and gets updated every quarter from the feedback the new joiners leave in the anonymous onboarding survey form.",
+      "role": "user"
+     },
+     {
+      "content": "Assistant-authored summary block one: the support backlog splits into password resets, billing disputes, and integration questions, with integration questions taking triple the handle time of the other two categories combined across every quarter measured so far.\n\nAssistant-authored summary block two: deflection from the knowledge base rose after the search upgrade, and the largest single win came from surfacing the webhook troubleshooting article on the integrations landing page where the ticket form used to be.\n\nAssistant-authored summary block three: the billing dispute queue clears fastest on Tuesdays when the finance liaison joins the rotation, suggesting the bottleneck is authority to issue credits rather than investigation time in the support tool itself.\n\nAssistant-authored summary block four: proposed next quarter targets are a ten percent reduction in first response time and a knowledge base article for each of the top twenty integration errors, owned jointly by support and the platform documentation guild.\n\nAssistant-authored summary block five: the on-call shadowing program graduated four new responders this quarter and the post-shift survey scores the pairing sessions as the single most useful part of the ramp, ahead of the runbook reading list.\n\nAssistant-authored summary block six: tooling asks from the team are a canned-response linter, a duplicate-ticket detector, and a way to preview the customer's plan limits inline instead of opening the admin panel in a second tab for every conversation.",
+      "role": "assistant"
+     },
+     {
+      "content": "Here is the situation I need help with this morning, written out in full so nothing gets lost between threads and hand-offs from the overnight rotation, whose notes I have pasted below verbatim where relevant to the open questions.\n\nA customer on the enterprise plan reports that their scheduled export arrived twice on Monday and not at all on Tuesday, and their webhook receiver logged one delivery attempt each day with different payload sizes on each attempt.\n\nTheir integration uses the standard relay with retries enabled, and the workspace audit log shows a manual export triggered by an automation user at roughly the same minute as the scheduled run on both days in question.\n\nThe account team wants a summary they can forward, the support engineer wants to know whether to disable the automation user, and the customer mainly wants to stop receiving duplicate files in their bucket every Monday morning.\n\nGiven all of that, what sequence of checks would you run first, and which of the two exports should be turned off while the investigation is open so the customer keeps exactly one reliable delivery per day?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 0
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "You are a support assistant for the Acme knowledge base.",
+     "role": "system"
+    },
+    {
+     "content": "Quick note: the export ran fine yesterday, context attached in the next messages for the real question coming later.",
+     "role": "user"
+    },
+    {
+     "content": [
+      {
+       "text": "Longform note carried as a content part: the quarterly planning template asks each team to list capacity, committed work, stretch goals, and known risks, then walks through dependency mapping with the partner teams before locking the plan. The template's final section collects the metrics each team will watch weekly, the thresholds that trigger a replan, and the single named owner for every committed line item. Historically the teams that fill in the risk section honestly replan half as often, because the dependency map catches the cross-team collisions while the quarter is still young and the mitigation is still a one-day conversation instead of a two-week scramble. The planning doc closes with a short retro template for the end of the quarter, four questions long, kept deliberately identical across teams so the aggregate rollup stays comparable from one planning cycle to the next without any manual reformatting effort.",
+       "type": "text"
+      }
+     ],
+     "role": "user"
+    },
+    {
+     "content": "First section of the archived onboarding guide, covering account provisioning from the request form through the identity provider group assignments, including the approval chain for elevated roles and the audit trail every approval writes to the compliance ledger for later review by the quarterly access certification campaign, which samples one in five grants and walks the chain backwards to the original request.\n\nSecond section, covering workstation setup: the managed laptop image, the update rings and their deferral windows, the self-service application catalog, and the escalation path when a build tool needs an exception to the standard image, which goes through the platform engineering intake board and comes back with either an approved exception or a supported alternative inside five business days.\n\nThird section, covering the first-week checklist: meet the onboarding buddy, complete the compliance modules, ship a starter change through the full review pipeline, and book the thirty-day check-in with the hiring manager, whose template lives next to this guide and gets updated every quarter from the feedback the new joiners leave in the anonymous onboarding survey form.",
+     "role": "user"
+    },
+    {
+     "content": "Assistant-authored summary block one: the support backlog splits into password resets, billing disputes, and integration questions, with integration questions taking triple the handle time of the other two categories combined across every quarter measured so far.\n\nAssistant-authored summary block two: deflection from the knowledge base rose after the search upgrade, and the largest single win came from surfacing the webhook troubleshooting article on the integrations landing page where the ticket form used to be.\n\nAssistant-authored summary block three: the billing dispute queue clears fastest on Tuesdays when the finance liaison joins the rotation, suggesting the bottleneck is authority to issue credits rather than investigation time in the support tool itself.\n\nAssistant-authored summary block four: proposed next quarter targets are a ten percent reduction in first response time and a knowledge base article for each of the top twenty integration errors, owned jointly by support and the platform documentation guild.\n\nAssistant-authored summary block five: the on-call shadowing program graduated four new responders this quarter and the post-shift survey scores the pairing sessions as the single most useful part of the ramp, ahead of the runbook reading list.\n\nAssistant-authored summary block six: tooling asks from the team are a canned-response linter, a duplicate-ticket detector, and a way to preview the customer's plan limits inline instead of opening the admin panel in a second tab for every conversation.",
+     "role": "assistant"
+    },
+    {
+     "content": "Here is the situation I need help with this morning, written out in full so nothing gets lost between threads and hand-offs from the overnight rotation, whose notes I have pasted below verbatim where relevant to the open questions.\n\nA customer on the enterprise plan reports that their scheduled export arrived twice on Monday and not at all on Tuesday, and their webhook receiver logged one delivery attempt each day with different payload sizes on each attempt.\n\nTheir integration uses the standard relay with retries enabled, and the workspace audit log shows a manual export triggered by an automation user at roughly the same minute as the scheduled run on both days in question.\n\nThe account team wants a summary they can forward, the support engineer wants to know whether to disable the automation user, and the customer mainly wants to stop receiving duplicate files in their bucket every Monday morning.\n\nGiven all of that, what sequence of checks would you run first, and which of the two exports should be turned off while the investigation is open so the customer keeps exactly one reliable delivery per day?",
+     "role": "user"
+    }
+   ],
+   "name": "noop_gates"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 2,
+    "messages": [
+     {
+      "content": "Launch party planning notes with reactions from the crew \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\n\nVenue shortlist reactions collected from the poll thread \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\n\nCatering options ranked by the tasting committee last week \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\n\nPlaylist suggestions gathered from the team channel today \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25",
+      "role": "user"
+     },
+     {
+      "content": "Beta program overview for the spring cohort \ud83d\ude00 covering enrollment, device coverage, and the feedback loop the product crew runs each week with the coordinators.\n\nThe beta launch is scheduled for April 9 \ud83d\ude80 with invitations going out in three waves so the support rotation can absorb the onboarding questions without paging anyone.\n\nWave one covers internal dogfooders and the customer council \ud83c\udf89 wave two adds the waitlist accounts, and wave three opens self-serve enrollment from the site banner.\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nExit criteria for the beta are two weeks below the crash budget, survey satisfaction above four out of five, and the migration tool passing its dry run on the oldest cohort.",
+      "role": "user"
+     },
+     {
+      "content": "When is the beta launch scheduled and who is in wave one?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 57
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "Launch party planning notes with reactions from the crew \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\n\nVenue shortlist reactions collected from the poll thread \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\n\nCatering options ranked by the tasting committee last week \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\n\nPlaylist suggestions gathered from the team channel today \ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25\ud83d\ude00\ud83d\ude80\ud83c\udf89\ud83d\udd25",
+     "role": "user"
+    },
+    {
+     "content": "Beta program overview for the spring cohort \ud83d\ude00 covering enrollment, device coverage, and the feedback loop the product crew runs each week with the coordinators.\n\nThe beta launch is scheduled for April 9 \ud83d\ude80 with invitations going out in three waves so the support rotation can absorb the onboarding questions without paging anyone.\n\nWave one covers internal dogfooders and the customer council \ud83c\udf89 wave two adds the waitlist accounts, and wave three opens self-serve enrollment from the site banner.\n\nFeedback lands in the beta board, triaged every morning; crash reports page the build cop directly \ud83d\udd25 and everything else waits for the weekly review with the leads.\n\nSwag inventory note: the sticker sheets from the winter batch are nearly gone and the reorder decision belongs to the community team, not the beta coordinators.\n\nExit criteria for the beta are two weeks below the crash budget, survey satisfaction above four out of five, and the migration tool passing its dry run on the oldest cohort.",
+     "role": "user"
+    },
+    {
+     "content": "When is the beta launch scheduled and who is in wave one?",
+     "role": "user"
+    }
+   ],
+   "name": "emoji_length_gates"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 9,
+    "messages": [
+     {
+      "content": "Solar inverter warranty guide for residential installations, covering coverage terms, the claim process, registration, and transfer rules for the current product line.\n\n[\u2026 5 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nAn approved claim ships a replacement inverter within five business days, and the courier collects the faulty unit at delivery using the same packaging.\n\n[\u2026 4 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nThis guide is maintained by the field service team; send corrections through the documentation channel and expect the next revision at the quarterly refresh.",
+      "role": "user"
+     },
+     {
+      "content": "How long is the solar inverter warranty and how do I claim it?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 305
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "Solar inverter warranty guide for residential installations, covering coverage terms, the claim process, registration, and transfer rules for the current product line.\n\nFacilities note: the company picnic moved to the lakeside pavilion this year and the shuttle leaves the north lot every twenty minutes starting at ten.\n\nThe standard inverter warranty runs ten years from the installation date, and registering the serial number within ninety days extends coverage to twelve years at no cost.\n\nReminder from facilities: the office recycling program now accepts soft plastics in the green bins next to the loading dock on the ground floor.\n\nWarranty claims start in the installer portal: submit the serial number, the fault code from the display, and a photo of the nameplate, then book the inspection slot.\n\nThe parking garage resurfacing continues through the end of the month; levels two and three close on alternating weekends per the posted schedule.\n\nAn approved claim ships a replacement inverter within five business days, and the courier collects the faulty unit at delivery using the same packaging.\n\nThe cafeteria menu rotates to the summer cycle next week, headlined by the return of the grain bowl station and the cold brew tap on the mezzanine.\n\nWarranty transfer to a new homeowner is automatic when the property sells; the new owner re-registers the serial number to keep the extended term active.\n\nThe book club meets Thursday in the small library to discuss the first half of the maintenance manual novelization, snacks provided by last month's host.\n\nDamage from unapproved third-party installers or from grid surges outside the rated envelope falls outside the warranty, and the portal flags those fault codes at intake.\n\nThis guide is maintained by the field service team; send corrections through the documentation channel and expect the next revision at the quarterly refresh.",
+     "role": "user"
+    },
+    {
+     "content": "How long is the solar inverter warranty and how do I claim it?",
+     "role": "user"
+    }
+   ],
+   "name": "scattered_markers"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 4,
+    "messages": [
+     {
+      "content": "Answer plan questions from the notes.",
+      "role": "system"
+     },
+     {
+      "content": "Plan comparison notes assembled for the sales enablement wiki, refreshed after the spring packaging change and the new usage meters went live.\n\nThe premium plan includes unlimited projects, five hundred automation runs per month, priority routing for support tickets, and the audit log with one year of retention.\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nTrials run fourteen days on premium features with no card required, and a workspace downgrades to starter automatically when the trial ends without a purchase.\n\nData export is available on both plans from the workspace settings page, and closed accounts keep export access for sixty days after cancellation takes effect.",
+      "role": "tool"
+     },
+     {
+      "content": "Fetched the plan comparison notes twice to double-check freshness.",
+      "role": "assistant"
+     },
+     {
+      "content": "Plan comparison notes assembled for the sales enablement wiki, refreshed after the spring packaging change and the new usage meters went live.\n\nThe premium plan includes unlimited projects, five hundred automation runs per month, priority routing for support tickets, and the audit log with one year of retention.\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nTrials run fourteen days on premium features with no card required, and a workspace downgrades to starter automatically when the trial ends without a purchase.\n\nData export is available on both plans from the workspace settings page, and closed accounts keep export access for sixty days after cancellation takes effect.",
+      "role": "tool"
+     },
+     {
+      "content": "What does the premium plan include?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 106
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "Answer plan questions from the notes.",
+     "role": "system"
+    },
+    {
+     "content": "Plan comparison notes assembled for the sales enablement wiki, refreshed after the spring packaging change and the new usage meters went live.\n\nThe premium plan includes unlimited projects, five hundred automation runs per month, priority routing for support tickets, and the audit log with one year of retention.\n\nThe starter plan covers three projects and fifty automation runs, with community support and a thirty day activity view instead of the full audit log.\n\nAnnual billing applies a fifteen percent discount to either plan and locks the seat price for the term; monthly billing floats with the published rate card.\n\nTrials run fourteen days on premium features with no card required, and a workspace downgrades to starter automatically when the trial ends without a purchase.\n\nData export is available on both plans from the workspace settings page, and closed accounts keep export access for sixty days after cancellation takes effect.",
+     "role": "tool"
+    },
+    {
+     "content": "Fetched the plan comparison notes twice to double-check freshness.",
+     "role": "assistant"
+    },
+    {
+     "content": "Plan comparison notes assembled for the sales enablement wiki, refreshed after the spring packaging change and the new usage meters went live.\n\nThe premium plan includes unlimited projects, five hundred automation runs per month, priority routing for support tickets, and the audit log with one year of retention.\n\nThe starter plan covers three projects and fifty automation runs, with community support and a thirty day activity view instead of the full audit log.\n\nAnnual billing applies a fifteen percent discount to either plan and locks the seat price for the term; monthly billing floats with the published rate card.\n\nTrials run fourteen days on premium features with no card required, and a workspace downgrades to starter automatically when the trial ends without a purchase.\n\nData export is available on both plans from the workspace settings page, and closed accounts keep export access for sixty days after cancellation takes effect.",
+     "role": "tool"
+    },
+    {
+     "content": "What does the premium plan include?",
+     "role": "user"
+    }
+   ],
+   "name": "duplicate_block_cache"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 4,
+    "messages": [
+     {
+      "content": "The old town walking route begins at the clock tower and follows the river wall past the merchant houses toward the stone bridge and its twin gatehouses.\n\n[\u2026 4 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nA city pass covers the funicular, both museums, and the bridge towers, and it pays for itself within a single afternoon of ordinary sightseeing.",
+      "role": "user"
+     },
+     {
+      "content": "\u05de\u05d4\u05d9 \u05de\u05d3\u05d9\u05e0\u05d9\u05d5\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d5\u05ea \u05d1\u05d7\u05e0\u05d5\u05ea \u05d4\u05de\u05d5\u05d6\u05d9\u05d0\u05d5\u05df?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 130
+   },
+   "keep": 1.0,
+   "messages": [
+    {
+     "content": "The old town walking route begins at the clock tower and follows the river wall past the merchant houses toward the stone bridge and its twin gatehouses.\n\nLocal bakeries open before sunrise, and the corner shop by the fountain sells the seeded loaf that the market guides mention in every seasonal pamphlet.\n\nThe maritime museum keeps the tide tables from the harbor's founding century on display beside the restored pilot boat and the original lens from the lighthouse.\n\nTram line four circles the hill district and offers the best rooftop views on the descent toward the botanical garden and the glasshouse promenade.\n\nThe evening market on the quay runs Thursday through Sunday, with the fish stalls closing first and the spice sellers staying open until the last ferry.\n\nA city pass covers the funicular, both museums, and the bridge towers, and it pays for itself within a single afternoon of ordinary sightseeing.",
+     "role": "user"
+    },
+    {
+     "content": "\u05de\u05d4\u05d9 \u05de\u05d3\u05d9\u05e0\u05d9\u05d5\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d5\u05ea \u05d1\u05d7\u05e0\u05d5\u05ea \u05d4\u05de\u05d5\u05d6\u05d9\u05d0\u05d5\u05df?",
+     "role": "user"
+    }
+   ],
+   "name": "zero_overlap_collapse"
+  },
+  {
+   "cfg": {
+    "dropMarker": "[snip {n} |*]",
+    "keepLeadTail": false,
+    "minMessageChars": 200
+   },
+   "expected": {
+    "changed": true,
+    "chunksDropped": 4,
+    "messages": [
+     {
+      "content": "[snip 2 |*]\n\nGarnet price today sits at forty two dollars per carat for gem grade at the Jaipur auction.\n\nThe garnet price climbed four percent this week on jewelry demand ahead of the festival season.\n\n[snip 2 |*]",
+      "role": "user"
+     },
+     {
+      "content": "What is the garnet price today?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 89
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "Weekly minerals desk notes for subscribers, spanning the metals board and the specialty stones.\n\nCopper held flat through the week while the exchange warehouses reported thinner inventories.\n\nGarnet price today sits at forty two dollars per carat for gem grade at the Jaipur auction.\n\nThe garnet price climbed four percent this week on jewelry demand ahead of the festival season.\n\nDealers expect the garnet market to cool once the festival orders clear the cutting houses.\n\nNext week's note adds the lithium board and a spotlight on the new assay rules for exporters.",
+     "role": "user"
+    },
+    {
+     "content": "What is the garnet price today?",
+     "role": "user"
+    }
+   ],
+   "name": "custom_cfg_marker"
+  }
+ ],
+ "generator": "tests/gen_golden.py",
+ "tokenCounter": "len // 4 (code points)"
+}

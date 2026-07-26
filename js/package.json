@@ -1,0 +1,46 @@
+{
+  "name": "barber-llm",
+  "version": "0.1.1",
+  "description": "Query-aware context trimming for LLM requests. Your context could use a trim.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "types": "index.d.ts",
+  "bin": {
+    "barber": "./cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "index.js",
+    "core.js",
+    "embedders.js",
+    "cli.js",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NadirRouter/barber.git",
+    "directory": "js"
+  },
+  "homepage": "https://getnadir.com",
+  "bugs": "https://github.com/NadirRouter/barber/issues",
+  "author": "Nadir",
+  "license": "MIT",
+  "keywords": [
+    "llm",
+    "context",
+    "tokens",
+    "prompt-compression",
+    "rag",
+    "cost"
+  ]
+}
