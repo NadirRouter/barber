@@ -9,6 +9,7 @@ Query-aware context trimming for LLM requests.
 **Your context could use a trim.** *33% off the top.*
 
 [![PyPI](https://img.shields.io/pypi/v/barber-llm)](https://pypi.org/project/barber-llm/)
+[![npm](https://img.shields.io/npm/v/barber-llm)](https://www.npmjs.com/package/barber-llm)
 [![CI](https://github.com/NadirRouter/barber/actions/workflows/ci.yml/badge.svg)](https://github.com/NadirRouter/barber/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://pypi.org/project/barber-llm/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/NadirRouter/barber/blob/main/LICENSE)
