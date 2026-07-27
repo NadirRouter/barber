@@ -22,7 +22,7 @@ from typing import Callable, Optional
 from .core import SelectionConfig, make_selection_transform
 from .core import _text_of
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 __all__ = ["trim", "TrimResult", "make_transform", "Cache", "SelectionConfig", "__version__"]
 

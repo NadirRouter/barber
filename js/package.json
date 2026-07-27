@@ -1,6 +1,6 @@
 {
   "name": "barber-llm",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Query-aware context trimming for LLM requests. Your context could use a trim.",
   "type": "module",
   "exports": {

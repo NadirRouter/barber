@@ -20,7 +20,7 @@ import {
 } from "./core.js";
 import { lexical } from "./embedders.js";
 
-export const VERSION = "0.1.3";
+export const VERSION = "0.2.0";
 export { DEFAULT_CONFIG, TIER_KEEP_RATIO, makeSelectionTransform, splitChunks, textOf } from "./core.js";
 export { lexical } from "./embedders.js";
 
