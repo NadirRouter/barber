@@ -120,7 +120,7 @@ def _token_counter() -> Callable[[str], int]:
 
 
 def _count_tokens(messages: list, ntok: Callable[[str], int]) -> int:
-    return sum(ntok(_text_of(m.get("content"))) for m in messages)
+    return sum(ntok(_text_of(m.get("content"), True)) for m in messages)
 
 
 def _marker_re(template: str) -> "re.Pattern":
@@ -139,8 +139,8 @@ def _count_dropped(before: list, after: list, marker: str) -> int:
     for b, a in zip(before, after):
         if b is a:
             continue
-        was = sum(int(n) for n in rx.findall(_text_of(b.get("content"))))
-        now = sum(int(n) for n in rx.findall(_text_of(a.get("content"))))
+        was = sum(int(n) for n in rx.findall(_text_of(b.get("content"), True)))
+        now = sum(int(n) for n in rx.findall(_text_of(a.get("content"), True)))
         total += now - was
     return total
 
@@ -186,8 +186,10 @@ def trim(
     False if none qualifies:
       - role is "user", "tool", or "function" (system and assistant are never
         touched)
-      - it is NOT the latest user message (that one is the question)
-      - content is a plain string, not a list of content parts
+      - it is NOT the latest user message (that one is the question, and in an
+        agent loop it is the tool result the agent is about to act on)
+      - content is a string, or text / tool_result parts inside a content list
+        (images and tool_use inputs pass through untouched)
       - at least 800 characters and at least 4 chunks
 
     So context and question packed into ONE user message is a no-op: put the

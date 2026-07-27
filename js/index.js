@@ -92,7 +92,7 @@ export class Cache {
 const ntok = (s) => Math.floor(charLen(s) / 4);
 
 const countTokens = (messages) =>
-  messages.reduce((acc, m) => acc + ntok(textOf(m.content)), 0);
+  messages.reduce((acc, m) => acc + ntok(textOf(m.content, true)), 0);
 
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -111,9 +111,9 @@ function countDropped(before, after, marker) {
     const a = after[i];
     if (b === a) continue;
     let was = 0;
-    for (const m of textOf(b.content).matchAll(rx)) was += Number(m[1]);
+    for (const m of textOf(b.content, true).matchAll(rx)) was += Number(m[1]);
     let now = 0;
-    for (const m of textOf(a.content).matchAll(rx)) now += Number(m[1]);
+    for (const m of textOf(a.content, true).matchAll(rx)) now += Number(m[1]);
     total += now - was;
   }
   return total;

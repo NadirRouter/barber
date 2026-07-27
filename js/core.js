@@ -108,16 +108,85 @@ function isPinned(chunk, rareQueryEntities) {
 // Chunking & scoring
 // ---------------------------------------------------------------------------
 
+// Line-oriented shapes an agent harness produces. Prose has blank lines
+// between paragraphs; a file read, a grep, a diff, or an ls does not, so the
+// paragraph splitter returns one chunk and selection declines the block.
+const LINE_NO = /^\s*\d+\t/; // `cat -n` / Read line prefix
+const HUNK = /^(?:diff --git |@@ )/; // unified diff
+
+function group(lines, isBoundary, drop) {
+  const out = [];
+  let cur = [];
+  for (const l of lines) {
+    if (isBoundary(l)) {
+      if (drop) {
+        if (cur.length) {
+          out.push(cur.join("\n"));
+          cur = [];
+        }
+        continue;
+      }
+      if (cur.length) {
+        out.push(cur.join("\n"));
+        cur = [];
+      }
+    }
+    cur.push(l);
+  }
+  if (cur.length) out.push(cur.join("\n"));
+  return out;
+}
+
+function splitLines(text, minChunks) {
+  // A JSON body is one value: dropping lines out of the middle yields
+  // something that no longer parses. Leave it whole.
+  const first = text.replace(/^\s+/, "").charAt(0);
+  if (first === "{" || first === "[") return [];
+  const lines = text.split("\n");
+  if (lines.length < minChunks) return [];
+
+  // Line-numbered file read: strip the prefix to find the blank lines of the
+  // underlying file, then chunk on those.
+  const head = lines.slice(0, 40);
+  if (head.filter((l) => LINE_NO.test(l)).length >= head.length * 0.8) {
+    const groups = group(lines, (l) => !l.replace(LINE_NO, "").trim(), true);
+    if (groups.length >= minChunks) return groups;
+  }
+
+  // Unified diff: one chunk per hunk.
+  if (lines.slice(0, 5).some((l) => HUNK.test(l))) {
+    const groups = group(lines, (l) => HUNK.test(l), false);
+    if (groups.length >= minChunks) return groups;
+  }
+
+  // Anything else line-oriented (grep hits, file lists, logs): fixed windows.
+  const step = Math.max(1, Math.floor(lines.length / 12));
+  const groups = [];
+  for (let i = 0; i < lines.length; i += step) {
+    groups.push(lines.slice(i, i + step).join("\n"));
+  }
+  return groups.length >= minChunks ? groups : [];
+}
+
 // Split a block into selectable chunks: prefer blank-line / delimiter
-// boundaries (RAG concatenations, tool rows), fall back to sentences.
-export function splitChunks(text) {
+// boundaries (RAG concatenations, tool rows), fall back to sentences, then to
+// line structure for the line-oriented output an agent harness produces.
+export function splitChunks(text, minChunks = DEFAULT_CONFIG.minChunks) {
   let parts = text.split(/\n\s*\n|\n---+\n|\n#{1,6}\s|\[\d+\]\s/);
   parts = parts.map((p) => p.trim()).filter(Boolean);
+  // Delimiters found: this is a chunked block, and how many chunks it has is
+  // the answer. Too few to bother cutting is a real signal, not a failure to
+  // look harder — do not fall through.
   if (parts.length >= 2) return parts;
-  return text
+  const sents = text
     .trim()
     .split(/(?<=[.!?])\s+/)
     .filter(Boolean);
+  if (sents.length >= minChunks) return sents;
+  // Nothing found any structure, so selection was about to decline the block
+  // whole. Line layout is the last place to look.
+  const byLine = splitLines(text, minChunks);
+  return byLine.length ? byLine : sents;
 }
 
 function cosBag(a, b) {
@@ -162,7 +231,7 @@ export function newStats() {
 const fmtMarker = (template, run) => template.replaceAll("{n}", String(run));
 
 function selectBlock(text, query, embedFn, keepRatio, cfg, _queryEntities, stats) {
-  const chunks = splitChunks(text);
+  const chunks = splitChunks(text, cfg.minChunks);
   if (chunks.length < cfg.minChunks) return [text, false];
 
   // rare query entities = query tokens appearing in <=2 chunks of THIS block
@@ -243,15 +312,51 @@ function selectBlock(text, query, embedFn, keepRatio, cfg, _queryEntities, stats
 // Build the pipeline transform
 // ---------------------------------------------------------------------------
 
-export function textOf(content) {
+// `toolResults` also walks tool-result bodies — right for token accounting,
+// wrong for finding the user's question (a tool result is not something the
+// human asked).
+export function textOf(content, toolResults = false) {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
-    return content
-      .filter((p) => p && typeof p === "object" && p.type === "text")
-      .map((p) => p.text ?? "")
-      .join(" ");
+    const out = [];
+    for (const p of content) {
+      if (!p || typeof p !== "object") continue;
+      if (p.type === "text") out.push(p.text ?? "");
+      else if (toolResults && p.type === "tool_result") out.push(textOf(p.content, true));
+    }
+    return out.join(" ");
   }
   return "";
+}
+
+// Apply `selectText` to the trimmable string bodies inside a content list.
+// Trimmable means text parts and tool-result bodies; everything else (images,
+// tool_use inputs, anything unrecognised) is copied through untouched.
+function selectParts(parts, selectText) {
+  const out = [];
+  let changed = false;
+  for (const p of parts) {
+    if (!p || typeof p !== "object") {
+      out.push(p);
+      continue;
+    }
+    if (p.type === "text" && typeof p.text === "string") {
+      const [next, ch] = selectText(p.text);
+      out.push(ch ? { ...p, text: next } : p);
+      changed = changed || ch;
+    } else if (p.type === "tool_result" && typeof p.content === "string") {
+      const [next, ch] = selectText(p.content);
+      out.push(ch ? { ...p, content: next } : p);
+      changed = changed || ch;
+    } else if (p.type === "tool_result" && Array.isArray(p.content)) {
+      const [next, ch] = selectParts(p.content, selectText);
+      out.push(ch ? { ...p, content: next } : p);
+      changed = changed || ch;
+    } else {
+      out.push(p);
+    }
+  }
+  return [out, changed];
 }
 
 // Returns ["context_selection", fn] where fn(messages) -> [messages, changed],
@@ -281,7 +386,11 @@ export function makeSelectionTransform({
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
         const c = messages[i].content;
-        return typeof c === "string" ? c : textOf(c);
+        const q = typeof c === "string" ? c : textOf(c);
+        // In an agent loop the last user message is usually a tool result
+        // carrying no text of its own. That is not the question; keep walking
+        // back to the last thing the human actually asked.
+        if (q.trim()) return q;
       }
     }
     return "";
@@ -302,39 +411,52 @@ export function makeSelectionTransform({
       if (messages[i].role === "user") lastUserIdx = i;
     }
 
-    for (let idx = 0; idx < messages.length; idx++) {
-      const m = messages[idx];
-      const content = m.content;
-      if (
-        idx === lastUserIdx ||
-        !config.selectableRoles.includes(m.role) ||
-        typeof content !== "string" ||
-        charLen(content) < config.minMessageChars
-      ) {
-        outMsgs.push(m);
-        continue;
-      }
-
+    // Run (or replay) the decision for one string block.
+    const selectText = (text) => {
+      if (charLen(text) < config.minMessageChars) return [text, false];
       // Key on the block ONLY — not the query, and not keepRatio.
       // Freeze-on-first-sight: the first turn to see a block decides it,
       // every later turn replays that decision verbatim, so the stable
       // prefix never mutates and the provider prompt cache stays warm.
-      const key = md5key(content);
-      let newContent, ch;
-      if (cache.has(key)) {
-        [newContent, ch] = cache.get(key);
-      } else {
-        [newContent, ch] = selectBlock(
-          content,
-          query,
-          embed,
-          keepRatio,
-          config,
-          queryEntities,
-          stats
+      const key = md5key(text);
+      if (!cache.has(key)) {
+        cache.set(
+          key,
+          selectBlock(text, query, embed, keepRatio, config, queryEntities, stats)
         );
-        cache.set(key, [newContent, ch]);
       }
+      return cache.get(key);
+    };
+
+    for (let idx = 0; idx < messages.length; idx++) {
+      const m = messages[idx];
+      const content = m.content;
+      if (idx === lastUserIdx || !config.selectableRoles.includes(m.role)) {
+        outMsgs.push(m);
+        continue;
+      }
+
+      // Content parts, not a plain string: this is the shape every agent
+      // harness actually sends, because a tool result is a content block. The
+      // big blocks in an agent session live in here, so skipping lists meant
+      // selection never fired on an agent transcript at all.
+      if (Array.isArray(content)) {
+        const [newParts, chAny] = selectParts(content, selectText);
+        if (chAny) {
+          outMsgs.push({ ...m, content: newParts });
+          changedAny = true;
+        } else {
+          outMsgs.push(m);
+        }
+        continue;
+      }
+
+      if (typeof content !== "string" || charLen(content) < config.minMessageChars) {
+        outMsgs.push(m);
+        continue;
+      }
+
+      const [newContent, ch] = selectText(content);
       if (ch) {
         outMsgs.push({ ...m, content: newContent });
         changedAny = true;

@@ -478,6 +478,354 @@
     }
    ],
    "name": "custom_cfg_marker"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 15,
+    "messages": [
+     {
+      "content": "read the config module",
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "id": "t1",
+        "input": {
+         "file_path": "/m.py"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": [
+       {
+        "content": "1\tdef unrelated_helper_number_0(argument, other_argument):\n2\t    intermediate = compute_something_unrelated_0(argument)\n3\t    return intermediate + other_argument\n\n[\u2026 15 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\n65\tdef parse_yaml_config(path):\n66\t    return yaml.safe_load(path)",
+        "tool_use_id": "t1",
+        "type": "tool_result"
+       }
+      ],
+      "role": "user"
+     },
+     {
+      "content": "what does parse_yaml_config do?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 615
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "read the config module",
+     "role": "user"
+    },
+    {
+     "content": [
+      {
+       "id": "t1",
+       "input": {
+        "file_path": "/m.py"
+       },
+       "name": "Read",
+       "type": "tool_use"
+      }
+     ],
+     "role": "assistant"
+    },
+    {
+     "content": [
+      {
+       "content": "1\tdef unrelated_helper_number_0(argument, other_argument):\n2\t    intermediate = compute_something_unrelated_0(argument)\n3\t    return intermediate + other_argument\n4\t\n5\tdef unrelated_helper_number_1(argument, other_argument):\n6\t    intermediate = compute_something_unrelated_1(argument)\n7\t    return intermediate + other_argument\n8\t\n9\tdef unrelated_helper_number_2(argument, other_argument):\n10\t    intermediate = compute_something_unrelated_2(argument)\n11\t    return intermediate + other_argument\n12\t\n13\tdef unrelated_helper_number_3(argument, other_argument):\n14\t    intermediate = compute_something_unrelated_3(argument)\n15\t    return intermediate + other_argument\n16\t\n17\tdef unrelated_helper_number_4(argument, other_argument):\n18\t    intermediate = compute_something_unrelated_4(argument)\n19\t    return intermediate + other_argument\n20\t\n21\tdef unrelated_helper_number_5(argument, other_argument):\n22\t    intermediate = compute_something_unrelated_5(argument)\n23\t    return intermediate + other_argument\n24\t\n25\tdef unrelated_helper_number_6(argument, other_argument):\n26\t    intermediate = compute_something_unrelated_6(argument)\n27\t    return intermediate + other_argument\n28\t\n29\tdef unrelated_helper_number_7(argument, other_argument):\n30\t    intermediate = compute_something_unrelated_7(argument)\n31\t    return intermediate + other_argument\n32\t\n33\tdef unrelated_helper_number_8(argument, other_argument):\n34\t    intermediate = compute_something_unrelated_8(argument)\n35\t    return intermediate + other_argument\n36\t\n37\tdef unrelated_helper_number_9(argument, other_argument):\n38\t    intermediate = compute_something_unrelated_9(argument)\n39\t    return intermediate + other_argument\n40\t\n41\tdef unrelated_helper_number_10(argument, other_argument):\n42\t    intermediate = compute_something_unrelated_10(argument)\n43\t    return intermediate + other_argument\n44\t\n45\tdef unrelated_helper_number_11(argument, other_argument):\n46\t    intermediate = compute_something_unrelated_11(argument)\n47\t    return intermediate + other_argument\n48\t\n49\tdef unrelated_helper_number_12(argument, other_argument):\n50\t    intermediate = compute_something_unrelated_12(argument)\n51\t    return intermediate + other_argument\n52\t\n53\tdef unrelated_helper_number_13(argument, other_argument):\n54\t    intermediate = compute_something_unrelated_13(argument)\n55\t    return intermediate + other_argument\n56\t\n57\tdef unrelated_helper_number_14(argument, other_argument):\n58\t    intermediate = compute_something_unrelated_14(argument)\n59\t    return intermediate + other_argument\n60\t\n61\tdef unrelated_helper_number_15(argument, other_argument):\n62\t    intermediate = compute_something_unrelated_15(argument)\n63\t    return intermediate + other_argument\n64\t\n65\tdef parse_yaml_config(path):\n66\t    return yaml.safe_load(path)",
+       "tool_use_id": "t1",
+       "type": "tool_result"
+      }
+     ],
+     "role": "user"
+    },
+    {
+     "content": "what does parse_yaml_config do?",
+     "role": "user"
+    }
+   ],
+   "name": "agent_read_content_parts"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 9,
+    "messages": [
+     {
+      "content": "src/module_0/handler.py:0: def handle_event_0(payload, context):\nsrc/module_1/handler.py:3: def handle_event_1(payload, context):\nsrc/module_2/handler.py:6: def handle_event_2(payload, context):\nsrc/module_3/handler.py:9: def handle_event_3(payload, context):\nsrc/module_4/handler.py:12: def handle_event_4(payload, context):\n\nsrc/module_5/handler.py:15: def handle_event_5(payload, context):\nsrc/module_6/handler.py:18: def handle_event_6(payload, context):\nsrc/module_7/handler.py:21: def handle_event_7(payload, context):\nsrc/module_8/handler.py:24: def handle_event_8(payload, context):\nsrc/module_9/handler.py:27: def handle_event_9(payload, context):\n\n[\u2026 9 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nsrc/module_55/handler.py:165: def handle_event_55(payload, context):\nsrc/module_56/handler.py:168: def handle_event_56(payload, context):\nsrc/module_57/handler.py:171: def handle_event_57(payload, context):\nsrc/module_58/handler.py:174: def handle_event_58(payload, context):\nsrc/module_59/handler.py:177: def handle_event_59(payload, context):",
+      "role": "user"
+     },
+     {
+      "content": "which handler deals with module_7?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 745
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "src/module_0/handler.py:0: def handle_event_0(payload, context):\nsrc/module_1/handler.py:3: def handle_event_1(payload, context):\nsrc/module_2/handler.py:6: def handle_event_2(payload, context):\nsrc/module_3/handler.py:9: def handle_event_3(payload, context):\nsrc/module_4/handler.py:12: def handle_event_4(payload, context):\nsrc/module_5/handler.py:15: def handle_event_5(payload, context):\nsrc/module_6/handler.py:18: def handle_event_6(payload, context):\nsrc/module_7/handler.py:21: def handle_event_7(payload, context):\nsrc/module_8/handler.py:24: def handle_event_8(payload, context):\nsrc/module_9/handler.py:27: def handle_event_9(payload, context):\nsrc/module_10/handler.py:30: def handle_event_10(payload, context):\nsrc/module_11/handler.py:33: def handle_event_11(payload, context):\nsrc/module_12/handler.py:36: def handle_event_12(payload, context):\nsrc/module_13/handler.py:39: def handle_event_13(payload, context):\nsrc/module_14/handler.py:42: def handle_event_14(payload, context):\nsrc/module_15/handler.py:45: def handle_event_15(payload, context):\nsrc/module_16/handler.py:48: def handle_event_16(payload, context):\nsrc/module_17/handler.py:51: def handle_event_17(payload, context):\nsrc/module_18/handler.py:54: def handle_event_18(payload, context):\nsrc/module_19/handler.py:57: def handle_event_19(payload, context):\nsrc/module_20/handler.py:60: def handle_event_20(payload, context):\nsrc/module_21/handler.py:63: def handle_event_21(payload, context):\nsrc/module_22/handler.py:66: def handle_event_22(payload, context):\nsrc/module_23/handler.py:69: def handle_event_23(payload, context):\nsrc/module_24/handler.py:72: def handle_event_24(payload, context):\nsrc/module_25/handler.py:75: def handle_event_25(payload, context):\nsrc/module_26/handler.py:78: def handle_event_26(payload, context):\nsrc/module_27/handler.py:81: def handle_event_27(payload, context):\nsrc/module_28/handler.py:84: def handle_event_28(payload, context):\nsrc/module_29/handler.py:87: def handle_event_29(payload, context):\nsrc/module_30/handler.py:90: def handle_event_30(payload, context):\nsrc/module_31/handler.py:93: def handle_event_31(payload, context):\nsrc/module_32/handler.py:96: def handle_event_32(payload, context):\nsrc/module_33/handler.py:99: def handle_event_33(payload, context):\nsrc/module_34/handler.py:102: def handle_event_34(payload, context):\nsrc/module_35/handler.py:105: def handle_event_35(payload, context):\nsrc/module_36/handler.py:108: def handle_event_36(payload, context):\nsrc/module_37/handler.py:111: def handle_event_37(payload, context):\nsrc/module_38/handler.py:114: def handle_event_38(payload, context):\nsrc/module_39/handler.py:117: def handle_event_39(payload, context):\nsrc/module_40/handler.py:120: def handle_event_40(payload, context):\nsrc/module_41/handler.py:123: def handle_event_41(payload, context):\nsrc/module_42/handler.py:126: def handle_event_42(payload, context):\nsrc/module_43/handler.py:129: def handle_event_43(payload, context):\nsrc/module_44/handler.py:132: def handle_event_44(payload, context):\nsrc/module_45/handler.py:135: def handle_event_45(payload, context):\nsrc/module_46/handler.py:138: def handle_event_46(payload, context):\nsrc/module_47/handler.py:141: def handle_event_47(payload, context):\nsrc/module_48/handler.py:144: def handle_event_48(payload, context):\nsrc/module_49/handler.py:147: def handle_event_49(payload, context):\nsrc/module_50/handler.py:150: def handle_event_50(payload, context):\nsrc/module_51/handler.py:153: def handle_event_51(payload, context):\nsrc/module_52/handler.py:156: def handle_event_52(payload, context):\nsrc/module_53/handler.py:159: def handle_event_53(payload, context):\nsrc/module_54/handler.py:162: def handle_event_54(payload, context):\nsrc/module_55/handler.py:165: def handle_event_55(payload, context):\nsrc/module_56/handler.py:168: def handle_event_56(payload, context):\nsrc/module_57/handler.py:171: def handle_event_57(payload, context):\nsrc/module_58/handler.py:174: def handle_event_58(payload, context):\nsrc/module_59/handler.py:177: def handle_event_59(payload, context):",
+     "role": "user"
+    },
+    {
+     "content": "which handler deals with module_7?",
+     "role": "user"
+    }
+   ],
+   "name": "agent_grep_windows"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 4,
+    "messages": [
+     {
+      "content": "diff --git a/svc.py b/svc.py\n--- a/svc.py\n+++ b/svc.py\n\n[\u2026 3 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\n@@ -61,4 +61,4 @@ def region_3():\n-    old_value_3 = compute_legacy_3()\n+    new_value_3 = compute_modern_3()\n     unchanged_line_3 = passthrough_3()\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\n@@ -101,4 +101,4 @@ def region_5():\n-    old_value_5 = compute_legacy_5()\n+    new_value_5 = compute_modern_5()\n     unchanged_line_5 = passthrough_5()",
+      "role": "user"
+     },
+     {
+      "content": "what changed in region_3?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 99
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "diff --git a/svc.py b/svc.py\n--- a/svc.py\n+++ b/svc.py\n@@ -1,4 +1,4 @@ def region_0():\n-    old_value_0 = compute_legacy_0()\n+    new_value_0 = compute_modern_0()\n     unchanged_line_0 = passthrough_0()\n@@ -21,4 +21,4 @@ def region_1():\n-    old_value_1 = compute_legacy_1()\n+    new_value_1 = compute_modern_1()\n     unchanged_line_1 = passthrough_1()\n@@ -41,4 +41,4 @@ def region_2():\n-    old_value_2 = compute_legacy_2()\n+    new_value_2 = compute_modern_2()\n     unchanged_line_2 = passthrough_2()\n@@ -61,4 +61,4 @@ def region_3():\n-    old_value_3 = compute_legacy_3()\n+    new_value_3 = compute_modern_3()\n     unchanged_line_3 = passthrough_3()\n@@ -81,4 +81,4 @@ def region_4():\n-    old_value_4 = compute_legacy_4()\n+    new_value_4 = compute_modern_4()\n     unchanged_line_4 = passthrough_4()\n@@ -101,4 +101,4 @@ def region_5():\n-    old_value_5 = compute_legacy_5()\n+    new_value_5 = compute_modern_5()\n     unchanged_line_5 = passthrough_5()",
+     "role": "user"
+    },
+    {
+     "content": "what changed in region_3?",
+     "role": "user"
+    }
+   ],
+   "name": "agent_diff_hunks"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": false,
+    "chunksDropped": 0,
+    "messages": [
+     {
+      "content": "{\n  \"setting_number_0\": \"configured value 0\",\n  \"setting_number_1\": \"configured value 1\",\n  \"setting_number_2\": \"configured value 2\",\n  \"setting_number_3\": \"configured value 3\",\n  \"setting_number_4\": \"configured value 4\",\n  \"setting_number_5\": \"configured value 5\",\n  \"setting_number_6\": \"configured value 6\",\n  \"setting_number_7\": \"configured value 7\",\n  \"setting_number_8\": \"configured value 8\",\n  \"setting_number_9\": \"configured value 9\",\n  \"setting_number_10\": \"configured value 10\",\n  \"setting_number_11\": \"configured value 11\",\n  \"setting_number_12\": \"configured value 12\",\n  \"setting_number_13\": \"configured value 13\",\n  \"setting_number_14\": \"configured value 14\",\n  \"setting_number_15\": \"configured value 15\",\n  \"setting_number_16\": \"configured value 16\",\n  \"setting_number_17\": \"configured value 17\",\n  \"setting_number_18\": \"configured value 18\",\n  \"setting_number_19\": \"configured value 19\",\n  \"setting_number_20\": \"configured value 20\",\n  \"setting_number_21\": \"configured value 21\",\n  \"setting_number_22\": \"configured value 22\",\n  \"setting_number_23\": \"configured value 23\",\n  \"setting_number_24\": \"configured value 24\",\n  \"setting_number_25\": \"configured value 25\",\n  \"setting_number_26\": \"configured value 26\",\n  \"setting_number_27\": \"configured value 27\",\n  \"setting_number_28\": \"configured value 28\",\n  \"setting_number_29\": \"configured value 29\",\n  \"setting_number_30\": \"configured value 30\",\n  \"setting_number_31\": \"configured value 31\",\n  \"setting_number_32\": \"configured value 32\",\n  \"setting_number_33\": \"configured value 33\",\n  \"setting_number_34\": \"configured value 34\",\n  \"setting_number_35\": \"configured value 35\",\n  \"setting_number_36\": \"configured value 36\",\n  \"setting_number_37\": \"configured value 37\",\n  \"setting_number_38\": \"configured value 38\",\n  \"setting_number_39\": \"configured value 39\",\n  \"final_setting\": true\n}",
+      "role": "user"
+     },
+     {
+      "content": "what is setting_number_12 set to?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 0
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "{\n  \"setting_number_0\": \"configured value 0\",\n  \"setting_number_1\": \"configured value 1\",\n  \"setting_number_2\": \"configured value 2\",\n  \"setting_number_3\": \"configured value 3\",\n  \"setting_number_4\": \"configured value 4\",\n  \"setting_number_5\": \"configured value 5\",\n  \"setting_number_6\": \"configured value 6\",\n  \"setting_number_7\": \"configured value 7\",\n  \"setting_number_8\": \"configured value 8\",\n  \"setting_number_9\": \"configured value 9\",\n  \"setting_number_10\": \"configured value 10\",\n  \"setting_number_11\": \"configured value 11\",\n  \"setting_number_12\": \"configured value 12\",\n  \"setting_number_13\": \"configured value 13\",\n  \"setting_number_14\": \"configured value 14\",\n  \"setting_number_15\": \"configured value 15\",\n  \"setting_number_16\": \"configured value 16\",\n  \"setting_number_17\": \"configured value 17\",\n  \"setting_number_18\": \"configured value 18\",\n  \"setting_number_19\": \"configured value 19\",\n  \"setting_number_20\": \"configured value 20\",\n  \"setting_number_21\": \"configured value 21\",\n  \"setting_number_22\": \"configured value 22\",\n  \"setting_number_23\": \"configured value 23\",\n  \"setting_number_24\": \"configured value 24\",\n  \"setting_number_25\": \"configured value 25\",\n  \"setting_number_26\": \"configured value 26\",\n  \"setting_number_27\": \"configured value 27\",\n  \"setting_number_28\": \"configured value 28\",\n  \"setting_number_29\": \"configured value 29\",\n  \"setting_number_30\": \"configured value 30\",\n  \"setting_number_31\": \"configured value 31\",\n  \"setting_number_32\": \"configured value 32\",\n  \"setting_number_33\": \"configured value 33\",\n  \"setting_number_34\": \"configured value 34\",\n  \"setting_number_35\": \"configured value 35\",\n  \"setting_number_36\": \"configured value 36\",\n  \"setting_number_37\": \"configured value 37\",\n  \"setting_number_38\": \"configured value 38\",\n  \"setting_number_39\": \"configured value 39\",\n  \"final_setting\": true\n}",
+     "role": "user"
+    },
+    {
+     "content": "what is setting_number_12 set to?",
+     "role": "user"
+    }
+   ],
+   "name": "agent_json_never_line_chunked"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": false,
+    "chunksDropped": 0,
+    "messages": [
+     {
+      "content": "what does parse_yaml_config do?",
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "id": "t1",
+        "input": {
+         "file_path": "/m.py"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": [
+       {
+        "content": "1\tdef unrelated_helper_number_0(argument, other_argument):\n2\t    intermediate = compute_something_unrelated_0(argument)\n3\t    return intermediate + other_argument\n4\t\n5\tdef unrelated_helper_number_1(argument, other_argument):\n6\t    intermediate = compute_something_unrelated_1(argument)\n7\t    return intermediate + other_argument\n8\t\n9\tdef unrelated_helper_number_2(argument, other_argument):\n10\t    intermediate = compute_something_unrelated_2(argument)\n11\t    return intermediate + other_argument\n12\t\n13\tdef unrelated_helper_number_3(argument, other_argument):\n14\t    intermediate = compute_something_unrelated_3(argument)\n15\t    return intermediate + other_argument\n16\t\n17\tdef unrelated_helper_number_4(argument, other_argument):\n18\t    intermediate = compute_something_unrelated_4(argument)\n19\t    return intermediate + other_argument\n20\t\n21\tdef unrelated_helper_number_5(argument, other_argument):\n22\t    intermediate = compute_something_unrelated_5(argument)\n23\t    return intermediate + other_argument\n24\t\n25\tdef unrelated_helper_number_6(argument, other_argument):\n26\t    intermediate = compute_something_unrelated_6(argument)\n27\t    return intermediate + other_argument\n28\t\n29\tdef unrelated_helper_number_7(argument, other_argument):\n30\t    intermediate = compute_something_unrelated_7(argument)\n31\t    return intermediate + other_argument\n32\t\n33\tdef unrelated_helper_number_8(argument, other_argument):\n34\t    intermediate = compute_something_unrelated_8(argument)\n35\t    return intermediate + other_argument\n36\t\n37\tdef unrelated_helper_number_9(argument, other_argument):\n38\t    intermediate = compute_something_unrelated_9(argument)\n39\t    return intermediate + other_argument\n40\t\n41\tdef unrelated_helper_number_10(argument, other_argument):\n42\t    intermediate = compute_something_unrelated_10(argument)\n43\t    return intermediate + other_argument\n44\t\n45\tdef unrelated_helper_number_11(argument, other_argument):\n46\t    intermediate = compute_something_unrelated_11(argument)\n47\t    return intermediate + other_argument\n48\t\n49\tdef unrelated_helper_number_12(argument, other_argument):\n50\t    intermediate = compute_something_unrelated_12(argument)\n51\t    return intermediate + other_argument\n52\t\n53\tdef unrelated_helper_number_13(argument, other_argument):\n54\t    intermediate = compute_something_unrelated_13(argument)\n55\t    return intermediate + other_argument\n56\t\n57\tdef unrelated_helper_number_14(argument, other_argument):\n58\t    intermediate = compute_something_unrelated_14(argument)\n59\t    return intermediate + other_argument\n60\t\n61\tdef unrelated_helper_number_15(argument, other_argument):\n62\t    intermediate = compute_something_unrelated_15(argument)\n63\t    return intermediate + other_argument\n64\t\n65\tdef parse_yaml_config(path):\n66\t    return yaml.safe_load(path)",
+        "tool_use_id": "t1",
+        "type": "tool_result"
+       }
+      ],
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 0
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "what does parse_yaml_config do?",
+     "role": "user"
+    },
+    {
+     "content": [
+      {
+       "id": "t1",
+       "input": {
+        "file_path": "/m.py"
+       },
+       "name": "Read",
+       "type": "tool_use"
+      }
+     ],
+     "role": "assistant"
+    },
+    {
+     "content": [
+      {
+       "content": "1\tdef unrelated_helper_number_0(argument, other_argument):\n2\t    intermediate = compute_something_unrelated_0(argument)\n3\t    return intermediate + other_argument\n4\t\n5\tdef unrelated_helper_number_1(argument, other_argument):\n6\t    intermediate = compute_something_unrelated_1(argument)\n7\t    return intermediate + other_argument\n8\t\n9\tdef unrelated_helper_number_2(argument, other_argument):\n10\t    intermediate = compute_something_unrelated_2(argument)\n11\t    return intermediate + other_argument\n12\t\n13\tdef unrelated_helper_number_3(argument, other_argument):\n14\t    intermediate = compute_something_unrelated_3(argument)\n15\t    return intermediate + other_argument\n16\t\n17\tdef unrelated_helper_number_4(argument, other_argument):\n18\t    intermediate = compute_something_unrelated_4(argument)\n19\t    return intermediate + other_argument\n20\t\n21\tdef unrelated_helper_number_5(argument, other_argument):\n22\t    intermediate = compute_something_unrelated_5(argument)\n23\t    return intermediate + other_argument\n24\t\n25\tdef unrelated_helper_number_6(argument, other_argument):\n26\t    intermediate = compute_something_unrelated_6(argument)\n27\t    return intermediate + other_argument\n28\t\n29\tdef unrelated_helper_number_7(argument, other_argument):\n30\t    intermediate = compute_something_unrelated_7(argument)\n31\t    return intermediate + other_argument\n32\t\n33\tdef unrelated_helper_number_8(argument, other_argument):\n34\t    intermediate = compute_something_unrelated_8(argument)\n35\t    return intermediate + other_argument\n36\t\n37\tdef unrelated_helper_number_9(argument, other_argument):\n38\t    intermediate = compute_something_unrelated_9(argument)\n39\t    return intermediate + other_argument\n40\t\n41\tdef unrelated_helper_number_10(argument, other_argument):\n42\t    intermediate = compute_something_unrelated_10(argument)\n43\t    return intermediate + other_argument\n44\t\n45\tdef unrelated_helper_number_11(argument, other_argument):\n46\t    intermediate = compute_something_unrelated_11(argument)\n47\t    return intermediate + other_argument\n48\t\n49\tdef unrelated_helper_number_12(argument, other_argument):\n50\t    intermediate = compute_something_unrelated_12(argument)\n51\t    return intermediate + other_argument\n52\t\n53\tdef unrelated_helper_number_13(argument, other_argument):\n54\t    intermediate = compute_something_unrelated_13(argument)\n55\t    return intermediate + other_argument\n56\t\n57\tdef unrelated_helper_number_14(argument, other_argument):\n58\t    intermediate = compute_something_unrelated_14(argument)\n59\t    return intermediate + other_argument\n60\t\n61\tdef unrelated_helper_number_15(argument, other_argument):\n62\t    intermediate = compute_something_unrelated_15(argument)\n63\t    return intermediate + other_argument\n64\t\n65\tdef parse_yaml_config(path):\n66\t    return yaml.safe_load(path)",
+       "tool_use_id": "t1",
+       "type": "tool_result"
+      }
+     ],
+     "role": "user"
+    }
+   ],
+   "name": "agent_newest_toolresult_is_untouched"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": true,
+    "chunksDropped": 15,
+    "messages": [
+     {
+      "content": "what does parse_yaml_config do?",
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "id": "t1",
+        "input": {
+         "file_path": "/m.py"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": [
+       {
+        "content": "1\tdef unrelated_helper_number_0(argument, other_argument):\n2\t    intermediate = compute_something_unrelated_0(argument)\n3\t    return intermediate + other_argument\n\n[\u2026 15 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\n65\tdef parse_yaml_config(path):\n66\t    return yaml.safe_load(path)",
+        "tool_use_id": "t1",
+        "type": "tool_result"
+       }
+      ],
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "id": "t2",
+        "input": {
+         "command": "pytest -q"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": [
+       {
+        "content": "1 passed",
+        "tool_use_id": "t2",
+        "type": "tool_result"
+       }
+      ],
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 615
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "what does parse_yaml_config do?",
+     "role": "user"
+    },
+    {
+     "content": [
+      {
+       "id": "t1",
+       "input": {
+        "file_path": "/m.py"
+       },
+       "name": "Read",
+       "type": "tool_use"
+      }
+     ],
+     "role": "assistant"
+    },
+    {
+     "content": [
+      {
+       "content": "1\tdef unrelated_helper_number_0(argument, other_argument):\n2\t    intermediate = compute_something_unrelated_0(argument)\n3\t    return intermediate + other_argument\n4\t\n5\tdef unrelated_helper_number_1(argument, other_argument):\n6\t    intermediate = compute_something_unrelated_1(argument)\n7\t    return intermediate + other_argument\n8\t\n9\tdef unrelated_helper_number_2(argument, other_argument):\n10\t    intermediate = compute_something_unrelated_2(argument)\n11\t    return intermediate + other_argument\n12\t\n13\tdef unrelated_helper_number_3(argument, other_argument):\n14\t    intermediate = compute_something_unrelated_3(argument)\n15\t    return intermediate + other_argument\n16\t\n17\tdef unrelated_helper_number_4(argument, other_argument):\n18\t    intermediate = compute_something_unrelated_4(argument)\n19\t    return intermediate + other_argument\n20\t\n21\tdef unrelated_helper_number_5(argument, other_argument):\n22\t    intermediate = compute_something_unrelated_5(argument)\n23\t    return intermediate + other_argument\n24\t\n25\tdef unrelated_helper_number_6(argument, other_argument):\n26\t    intermediate = compute_something_unrelated_6(argument)\n27\t    return intermediate + other_argument\n28\t\n29\tdef unrelated_helper_number_7(argument, other_argument):\n30\t    intermediate = compute_something_unrelated_7(argument)\n31\t    return intermediate + other_argument\n32\t\n33\tdef unrelated_helper_number_8(argument, other_argument):\n34\t    intermediate = compute_something_unrelated_8(argument)\n35\t    return intermediate + other_argument\n36\t\n37\tdef unrelated_helper_number_9(argument, other_argument):\n38\t    intermediate = compute_something_unrelated_9(argument)\n39\t    return intermediate + other_argument\n40\t\n41\tdef unrelated_helper_number_10(argument, other_argument):\n42\t    intermediate = compute_something_unrelated_10(argument)\n43\t    return intermediate + other_argument\n44\t\n45\tdef unrelated_helper_number_11(argument, other_argument):\n46\t    intermediate = compute_something_unrelated_11(argument)\n47\t    return intermediate + other_argument\n48\t\n49\tdef unrelated_helper_number_12(argument, other_argument):\n50\t    intermediate = compute_something_unrelated_12(argument)\n51\t    return intermediate + other_argument\n52\t\n53\tdef unrelated_helper_number_13(argument, other_argument):\n54\t    intermediate = compute_something_unrelated_13(argument)\n55\t    return intermediate + other_argument\n56\t\n57\tdef unrelated_helper_number_14(argument, other_argument):\n58\t    intermediate = compute_something_unrelated_14(argument)\n59\t    return intermediate + other_argument\n60\t\n61\tdef unrelated_helper_number_15(argument, other_argument):\n62\t    intermediate = compute_something_unrelated_15(argument)\n63\t    return intermediate + other_argument\n64\t\n65\tdef parse_yaml_config(path):\n66\t    return yaml.safe_load(path)",
+       "tool_use_id": "t1",
+       "type": "tool_result"
+      }
+     ],
+     "role": "user"
+    },
+    {
+     "content": [
+      {
+       "id": "t2",
+       "input": {
+        "command": "pytest -q"
+       },
+       "name": "Bash",
+       "type": "tool_use"
+      }
+     ],
+     "role": "assistant"
+    },
+    {
+     "content": [
+      {
+       "content": "1 passed",
+       "tool_use_id": "t2",
+       "type": "tool_result"
+      }
+     ],
+     "role": "user"
+    }
+   ],
+   "name": "agent_query_walks_back_past_toolresults"
   }
  ],
  "generator": "tests/gen_golden.py",

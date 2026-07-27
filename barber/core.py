@@ -119,17 +119,87 @@ _TOK = re.compile(r"[a-z0-9]+")
 def _tokenize(s: str) -> list[str]:
     return _TOK.findall(s.lower())
 
-def split_chunks(text: str) -> list[str]:
+# Line-oriented shapes an agent harness produces. Prose has blank lines between
+# paragraphs; a file read, a grep, a diff, or an ls does not, so the paragraph
+# splitter below returns one chunk and selection declines the block entirely.
+_LINE_NO = re.compile(r"^\s*\d+\t")             # `cat -n` / Read line prefix
+_HUNK = re.compile(r"^(?:diff --git |@@ )")     # unified diff
+
+def _split_lines(text: str, min_chunks: int) -> list[str]:
+    """Chunk line-oriented text. Returns [] when no shape applies.
+
+    Only reached when the paragraph and sentence splitters both came up short,
+    so this widens coverage without moving any decision they already made.
+    """
+    if text.lstrip()[:1] in "{[":
+        # A JSON body is one value: dropping lines out of the middle yields
+        # something that no longer parses. Leave it whole.
+        return []
+    lines = text.split("\n")
+    if len(lines) < min_chunks:
+        return []
+
+    # Line-numbered file read: strip the prefix to find the blank lines of the
+    # underlying file, then chunk on those — the file's own paragraph structure
+    # (function and block boundaries), not an arbitrary window.
+    head = lines[:40]
+    if sum(1 for l in head if _LINE_NO.match(l)) >= len(head) * 0.8:
+        groups = _group(lines, lambda l: not _LINE_NO.sub("", l).strip(), drop=True)
+        if len(groups) >= min_chunks:
+            return groups
+
+    # Unified diff: one chunk per hunk.
+    if any(_HUNK.match(l) for l in lines[:5]):
+        groups = _group(lines, lambda l: _HUNK.match(l) is not None, drop=False)
+        if len(groups) >= min_chunks:
+            return groups
+
+    # Anything else line-oriented (grep hits, file lists, logs): fixed windows.
+    # ponytail: 12 windows is a knob, not a law — it is enough chunks for the
+    # keep ratio to have somewhere to cut without slicing single log lines.
+    step = max(1, len(lines) // 12)
+    groups = ["\n".join(lines[i:i + step]) for i in range(0, len(lines), step)]
+    return groups if len(groups) >= min_chunks else []
+
+def _group(lines: list[str], is_boundary, *, drop: bool) -> list[str]:
+    """Split lines at boundary lines. drop=True discards them (blank lines),
+    drop=False starts a new chunk with them (diff hunk headers)."""
+    out: list[str] = []
+    cur: list[str] = []
+    for l in lines:
+        if is_boundary(l):
+            if drop:
+                if cur:
+                    out.append("\n".join(cur)); cur = []
+                continue
+            if cur:
+                out.append("\n".join(cur)); cur = []
+        cur.append(l)
+    if cur:
+        out.append("\n".join(cur))
+    return out
+
+def split_chunks(text: str, min_chunks: int = 4) -> list[str]:
     """Split a block into selectable chunks: prefer blank-line / delimiter
-    boundaries (RAG concatenations, tool rows), fall back to sentences."""
+    boundaries (RAG concatenations, tool rows), fall back to sentences, then to
+    line structure for the line-oriented output an agent harness produces."""
     # explicit chunk delimiters common in RAG concatenation
     parts = re.split(r"\n\s*\n|\n---+\n|\n#{1,6}\s|\[\d+\]\s", text)
     parts = [p.strip() for p in parts if p and p.strip()]
     if len(parts) >= 2:
+        # Delimiters found: this is a chunked block, and how many chunks it has
+        # is the answer. Too few to bother cutting is a real signal, not a
+        # failure to look harder — leave that decision where the benchmark set
+        # it, and do not fall through.
         return parts
     # fall back to sentence-ish splitting for a single wall of prose
-    sents = re.split(r"(?<=[.!?])\s+", text.strip())
-    return [s for s in sents if s]
+    sents = [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
+    if len(sents) >= min_chunks:
+        return sents
+    # Nothing found any structure, so selection was about to decline the block
+    # whole (see the min_chunks gate in _select_block). Line layout is the last
+    # place to look; if that comes up empty too, nothing is lost.
+    return _split_lines(text, min_chunks) or sents
 
 def _cos(a: dict, b: dict) -> float:
     if not a or not b:
@@ -162,7 +232,7 @@ class SelectionStats:
 def _select_block(text: str, query: str, embed_fn, keep_ratio: float,
                   cfg: SelectionConfig, query_entities: set[str],
                   stats: SelectionStats) -> tuple[str, bool]:
-    chunks = split_chunks(text)
+    chunks = split_chunks(text, cfg.min_chunks)
     if len(chunks) < cfg.min_chunks:
         return text, False
 
@@ -245,7 +315,13 @@ def make_selection_transform(
         for m in reversed(messages):
             if m.get("role") == "user":
                 c = m.get("content")
-                return c if isinstance(c, str) else _text_of(c)
+                q = c if isinstance(c, str) else _text_of(c)
+                # In an agent loop the last user message is usually a tool
+                # result carrying no text of its own. That is not the question;
+                # keep walking back to the last thing the human actually asked,
+                # or the whole transform bails on an empty query.
+                if q.strip():
+                    return q
         return ""
 
     def transform(messages: list[dict]) -> tuple[list[dict], bool]:
@@ -262,10 +338,42 @@ def make_selection_transform(
         # the latest user message is the QUERY — never prune it
         last_user_idx = max((i for i, m in enumerate(messages) if m.get("role") == "user"), default=-1)
 
+        def select_text(text: str) -> tuple[str, bool]:
+            """Run (or replay) the decision for one string block."""
+            if len(text) < cfg.min_message_chars:
+                return text, False
+            # Key on the block ONLY -- not the query, and not keep_ratio.
+            # A conversation asks a new question every turn AND may route to a
+            # different tier every turn, so including either meant the history
+            # block was re-selected and the prefix mutated, silently destroying
+            # the provider prompt cache this memoization exists to protect.
+            # Freeze-on-first-sight: the first turn to see a block decides it,
+            # every later turn replays that decision verbatim.
+            key = hashlib.md5(text.encode()).hexdigest()[:12]
+            if key not in cache:
+                cache[key] = _select_block(text, query, embed_fn, keep_ratio,
+                                           cfg, query_entities, stats)
+            return cache[key]
+
         for idx, m in enumerate(messages):
             content = m.get("content")
-            if (idx == last_user_idx or m.get("role") not in cfg.selectable_roles
-                    or not isinstance(content, str) or len(content) < cfg.min_message_chars):
+            if idx == last_user_idx or m.get("role") not in cfg.selectable_roles:
+                out_msgs.append(m); continue
+
+            # Content parts, not a plain string: this is the shape every agent
+            # harness actually sends, because a tool result is a content block
+            # (Anthropic tool_result, OpenAI-style text parts). The big blocks
+            # in an agent session live in here, so skipping lists meant
+            # selection never fired on an agent transcript at all.
+            if isinstance(content, list):
+                new_parts, ch_any = _select_parts(content, select_text)
+                if ch_any:
+                    out_msgs.append({**m, "content": new_parts}); changed_any = True
+                else:
+                    out_msgs.append(m)
+                continue
+
+            if not isinstance(content, str) or len(content) < cfg.min_message_chars:
                 out_msgs.append(m); continue
 
             # Key on the block ONLY -- not the query, and not keep_ratio.
@@ -294,10 +402,50 @@ def make_selection_transform(
     return ("context_selection", transform)
 
 
-def _text_of(content) -> str:
+def _select_parts(parts: list, select_text) -> tuple[list, bool]:
+    """Apply `select_text` to the trimmable string bodies inside a content list.
+
+    Trimmable means text parts and tool-result bodies. Everything else (images,
+    tool_use inputs, anything unrecognised) is copied through untouched: a
+    tool_use input is arguments the provider will parse, not prose to prune.
+    """
+    out, changed = [], False
+    for p in parts:
+        if not isinstance(p, dict):
+            out.append(p); continue
+        kind = p.get("type")
+        if kind == "text" and isinstance(p.get("text"), str):
+            new, ch = select_text(p["text"])
+            out.append({**p, "text": new} if ch else p); changed |= ch
+        elif kind == "tool_result":
+            inner = p.get("content")
+            if isinstance(inner, str):
+                new, ch = select_text(inner)
+                out.append({**p, "content": new} if ch else p); changed |= ch
+            elif isinstance(inner, list):
+                new_inner, ch = _select_parts(inner, select_text)
+                out.append({**p, "content": new_inner} if ch else p); changed |= ch
+            else:
+                out.append(p)
+        else:
+            out.append(p)
+    return out, changed
+
+
+def _text_of(content, tool_results: bool = False) -> str:
+    """Flatten content to text. `tool_results=True` also walks tool-result
+    bodies — right for token accounting, wrong for finding the user's question
+    (a tool result is not something the human asked)."""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        return " ".join(p.get("text", "") for p in content
-                        if isinstance(p, dict) and p.get("type") == "text")
+        out = []
+        for p in content:
+            if not isinstance(p, dict):
+                continue
+            if p.get("type") == "text":
+                out.append(p.get("text", ""))
+            elif tool_results and p.get("type") == "tool_result":
+                out.append(_text_of(p.get("content"), True))
+        return " ".join(out)
     return ""

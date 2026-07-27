@@ -251,6 +251,50 @@ S12_CTX = block(
     "Next week's note adds the lithium board and a spotlight on the new assay rules for exporters.",
 )
 
+# --- agent-shaped scenarios (line-oriented tool output, content parts) -------
+
+def read_output(*lines: str) -> str:
+    """What a Read tool returns: `N\t` line prefixes, so the blank lines of the
+    underlying file are no longer blank."""
+    return "\n".join(f"{i + 1}\t{l}" for i, l in enumerate(lines))
+
+
+_SRC = []
+for _i in range(16):
+    _SRC += [
+        f"def unrelated_helper_number_{_i}(argument, other_argument):",
+        f"    intermediate = compute_something_unrelated_{_i}(argument)",
+        "    return intermediate + other_argument",
+        "",
+    ]
+_SRC += ["def parse_yaml_config(path):", "    return yaml.safe_load(path)"]
+S_READ = read_output(*_SRC)
+
+S_GREP = "\n".join(
+    f"src/module_{i}/handler.py:{i * 3}: def handle_event_{i}(payload, context):"
+    for i in range(60)
+)
+
+S_DIFF = "\n".join(
+    ["diff --git a/svc.py b/svc.py", "--- a/svc.py", "+++ b/svc.py"]
+    + [
+        line
+        for i in range(6)
+        for line in (
+            f"@@ -{i * 20 + 1},4 +{i * 20 + 1},4 @@ def region_{i}():",
+            f"-    old_value_{i} = compute_legacy_{i}()",
+            f"+    new_value_{i} = compute_modern_{i}()",
+            f"     unchanged_line_{i} = passthrough_{i}()",
+        )
+    ]
+)
+
+S_JSON = (
+    "{\n"
+    + "\n".join(f'  "setting_number_{i}": "configured value {i}",' for i in range(40))
+    + '\n  "final_setting": true\n}'
+)
+
 SCENARIOS = [
     {
         "name": "rag_basic",
@@ -372,6 +416,116 @@ SCENARIOS = [
         "messages": [
             {"role": "user", "content": S12_CTX},
             {"role": "user", "content": "What is the garnet price today?"},
+        ],
+    },
+    {
+        "name": "agent_read_content_parts",
+        "keep": 0.6,
+        "wantChanged": True,
+        "messages": [
+            {"role": "user", "content": "read the config module"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "id": "t1", "name": "Read",
+                     "input": {"file_path": "/m.py"}}
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "t1", "content": S_READ}
+                ],
+            },
+            {"role": "user", "content": "what does parse_yaml_config do?"},
+        ],
+    },
+    {
+        "name": "agent_grep_windows",
+        "keep": 0.5,
+        "wantChanged": True,
+        "messages": [
+            {"role": "user", "content": S_GREP},
+            {"role": "user", "content": "which handler deals with module_7?"},
+        ],
+    },
+    {
+        "name": "agent_diff_hunks",
+        "keep": 0.5,
+        "wantChanged": True,
+        "messages": [
+            {"role": "user", "content": S_DIFF},
+            {"role": "user", "content": "what changed in region_3?"},
+        ],
+    },
+    {
+        "name": "agent_json_never_line_chunked",
+        "keep": 0.5,
+        "wantChanged": False,
+        "messages": [
+            {"role": "user", "content": S_JSON},
+            {"role": "user", "content": "what is setting_number_12 set to?"},
+        ],
+    },
+    {
+        # The newest tool result is the one the agent is about to act on, and it
+        # sits in the last user message — the "never prune the question" guard
+        # covers it. Selection reaches it on the next turn, not this one.
+        "name": "agent_newest_toolresult_is_untouched",
+        "keep": 0.6,
+        "wantChanged": False,
+        "messages": [
+            {"role": "user", "content": "what does parse_yaml_config do?"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "id": "t1", "name": "Read",
+                     "input": {"file_path": "/m.py"}}
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "t1", "content": S_READ}
+                ],
+            },
+        ],
+    },
+    {
+        # A full agent loop: the question, a big tool result, then another tool
+        # call. The query has to be found by walking back past tool-result
+        # messages that carry no text of their own.
+        "name": "agent_query_walks_back_past_toolresults",
+        "keep": 0.6,
+        "wantChanged": True,
+        "messages": [
+            {"role": "user", "content": "what does parse_yaml_config do?"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "id": "t1", "name": "Read",
+                     "input": {"file_path": "/m.py"}}
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "t1", "content": S_READ}
+                ],
+            },
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "id": "t2", "name": "Bash",
+                     "input": {"command": "pytest -q"}}
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "t2", "content": "1 passed"}
+                ],
+            },
         ],
     },
 ]

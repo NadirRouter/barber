@@ -128,7 +128,7 @@ message meets every one of these:
 |---|---|
 | Role is `user`, `tool`, or `function` | System and assistant messages are never touched. |
 | Not the latest user message | That message is the question, and the question is never trimmed. |
-| `content` is a plain string | Content-parts lists (`[{"type": "text", ...}]`) are skipped. |
+| `content` is a string, or text/`tool_result` parts | Other parts (images, `tool_use` inputs) pass through untouched. |
 | At least 800 characters | Anything shorter is not retrieved context. |
 | At least 4 chunks | Below that there is nothing to choose between. |
 
@@ -149,6 +149,69 @@ messages = [{"role": "user", "content": docs},
 Most APIs accept consecutive user messages. If yours does not, put the context
 in a `tool` or `function` message, which is where retrieved context usually
 arrives anyway.
+
+## Coding agents
+
+A coding-agent transcript is not a RAG block, and two of its habits defeat
+plain `trim()`:
+
+* **Its context lives in content parts.** A tool result is a `tool_result`
+  block, not a string, and that is where the big text is. `trim()` now walks
+  into text and `tool_result` parts (`tool_use` inputs and images are passed
+  through untouched).
+* **Its output has no blank lines.** A file read, a grep, an `ls`, a diff — the
+  paragraph splitter finds one chunk and selection declines the block. barber
+  now falls back to line structure when, and only when, nothing else found any:
+  a line-numbered read is chunked on the blank lines of the underlying *file*,
+  a diff on its hunks, flat output on line windows. A JSON body is never
+  line-chunked, because half a JSON object does not parse.
+
+Selection still only guesses relevance. In an agent transcript, most of the
+dead weight does not need a guess at all — it is content the transcript itself
+proves is no longer true:
+
+```python
+from barber import trim
+from barber.agent import sweep
+
+result = sweep(trim(messages).messages)
+```
+
+`sweep()` drops three things, each provable from the transcript, each marked
+with the file path so the agent can just read it again:
+
+| Dropped | Because |
+|---|---|
+| A file body written before the same file was **fully rewritten** | It is not the file any more. A later `Edit` does *not* count: the file still holds that body. |
+| A `Read` result for a file **modified since** | It is not the file any more. |
+| A byte-identical repeat of an earlier tool result | It says nothing new. |
+
+Blocks are emptied, never removed: a request rejects a `tool_use` with no
+matching `tool_result`, so the structure survives even when the content does
+not.
+
+**`sweep()` rewrites history, and `trim()` deliberately does not.** The
+freeze-on-first-sight cache exists to keep the prefix byte-stable so the
+provider prompt cache stays warm; `sweep()` edits messages in the middle of the
+conversation, so everything after the earliest edit is re-primed once. That is
+a good trade at a compaction point with many turns left to amortize it, and a
+bad one on turn three — which is why it is a call you make, not something
+`trim()` does behind your back.
+
+Measured on six real Claude Code sessions (1.16M tokens of transcript), in
+quota units that charge cache reads at 0.1x and cache writes at 1.25x, and
+paying the sweep's re-prime cost in full:
+
+| | Tokens removed | Quota saved |
+|---|---|---|
+| `trim()` before this (content-parts guard) | 0.0% | 0.0% |
+| `trim()` | 11.5% | 14.9% |
+| `trim()` + `sweep()` | 19.5% | 23.7% |
+
+That is 1.31x the turns per unit of quota. Your mileage varies with what your
+session does: the spread across those six sessions was 1.18x to 1.68x, and the
+sessions that gain most are the ones that rewrite the same files repeatedly.
+`sweep()` is Python-only for now; the JS port has the `trim()` half.
 
 ## The benchmark
 
