@@ -104,6 +104,24 @@ safety and policy wording survive, chunks carrying rare query entities
 survive, and chunks far below the top relevance score drop even when the
 budget would keep them.
 
+## The prompt cache
+
+Providers bill a cached token at a fraction of a fresh one — Anthropic reads at
+0.1x and writes at 1.25x — and the cache is a **prefix** match: change one byte
+at position N and everything after N is billed as new.
+
+`trim()` is built to respect that. It never rewrites earlier turns, and with a
+shared cache the decision for a block is frozen the first time it is seen and
+replayed byte-identically forever after, so the prefix your provider cached
+stays exactly as it was. **Pass a shared cache in any multi-turn loop** —
+without one, `trim()` still removes tokens but re-decides each block against
+the current question, and a prefix that changes shape every turn is a prefix
+nobody caches.
+
+A cached token is cheap, not free, and it still occupies the context window.
+Trimming the stable prefix of a long session is a context-quality decision, not
+a cost one.
+
 ## Relation to the Python package
 
 The Python package is the source of truth and carries the evaluation harness
@@ -111,6 +129,11 @@ The Python package is the source of truth and carries the evaluation harness
 changes land there first, get re-benchmarked, then port here with regenerated
 fixtures. Full docs live in the
 [repository](https://github.com/NadirRouter/barber).
+
+The Python package additionally has `barber.agent.sweep()`, which drops
+provably-dead transcript weight (superseded file bodies, stale reads, duplicate
+tool results). It is not ported here, because unlike `trim()` it rewrites
+history and has to price the resulting cache re-prime.
 
 ## License
 

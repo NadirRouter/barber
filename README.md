@@ -235,6 +235,40 @@ session does: the spread across those six sessions was 1.18x to 1.68x, and the
 sessions that gain most are the ones that rewrite the same files repeatedly.
 `sweep()` is Python-only for now; the JS port has the `trim()` half.
 
+## The prompt cache
+
+Providers bill a cached token at a fraction of a fresh one — Anthropic reads at
+0.1x and writes at 1.25x — and the cache is a **prefix** match: change one byte
+at position N and everything after N is billed as new. That single fact decides
+what each part of barber is allowed to do.
+
+| | Disturbs the cached prefix | What it costs |
+|---|---|---|
+| `trim()` with a shared `Cache` | no | nothing; decisions are frozen and replayed byte-identically |
+| `trim()` with no cache | yes, every turn | each block is re-decided against the current question, so the prefix churns |
+| `sweep()` | yes, from the earliest edit | one re-prime of everything after it — priced when you pass `remaining_turns` |
+| `contrib/claude_code_hook.py` | no | nothing; it rewrites tool output before it ever enters context |
+
+Three rules follow from the table:
+
+1. **Pass a shared `Cache` in any multi-turn loop.** Without one, `trim()` still
+   removes tokens but re-decides every block each turn, and a prefix that
+   changes shape each turn is a prefix nobody caches. This is the single
+   cheapest thing on this page.
+2. **Prefer trimming at admission over trimming in hindsight.** An agent
+   re-sends its whole conversation every turn, so a token removed before it
+   enters context is saved once per remaining turn, while the same token
+   removed afterwards costs a re-prime to collect. Both are worth doing; only
+   one is free.
+3. **Treat `sweep()` as a spend, not a saving, until you have counted the
+   turns.** It is the only call here that rewrites history, which is why it is
+   explicit and why `remaining_turns` exists.
+
+One caveat worth stating plainly: a cached token is cheap, not free, and it
+still occupies the context window. Trimming the stable prefix of a long session
+is a context-quality decision, not a cost decision — do not expect the quota
+numbers above to follow.
+
 ## The benchmark
 
 <img src="https://raw.githubusercontent.com/NadirRouter/barber/main/assets/barber-benchmark-results.png" alt="benchmark stat card" align="right" width="300">
