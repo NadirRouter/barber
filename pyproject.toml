@@ -41,4 +41,10 @@ barber-eval = "barber.eval.harness:main"
 packages = ["barber"]
 
 [tool.hatch.build.targets.sdist]
-include = ["barber", "tests", "docs", "README.md", "LICENSE", "pyproject.toml"]
+# Leading slashes are load-bearing: hatchling matches these gitignore-style, so
+# an unanchored "README.md" / "LICENSE" also matched js/README.md and js/LICENSE
+# and shipped two orphan files from a JS port the sdist otherwise excludes.
+# `contrib` is here so tests/test_hook.py has the hook it tests -- the wheel is
+# governed separately by packages = ["barber"], so contrib still never reaches
+# an installed environment.
+include = ["barber", "contrib", "tests", "docs", "/README.md", "/LICENSE", "/pyproject.toml"]
