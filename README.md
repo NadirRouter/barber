@@ -198,6 +198,28 @@ a good trade at a compaction point with many turns left to amortize it, and a
 bad one on turn three — which is why it is a call you make, not something
 `trim()` does behind your back.
 
+Tell it how many turns are left and it will do that arithmetic for you:
+
+```python
+sweep(messages, remaining_turns=50)
+```
+
+An edit at position P costs re-writing every token after P at 1.25x instead of
+reading it back at 0.1x, and buys those removed tokens never being re-read
+again. With `T` tokens after the cut and `S` of them removed, it only pays once
+
+    S/T > 1.15 / (1.15 + 0.1 * remaining_turns)
+
+— 53% of the tail at 10 turns, 19% at 50, 10% at 100. Editing later costs less
+and saves less, so `sweep()` scores every candidate cut point and keeps only
+the edits at or after the best one; everything before it is left alone and
+stays cached. When nothing clears the bar it changes nothing and says so. The
+15.7% of tool tokens the sweep can find needs roughly 62 remaining turns to pay
+for itself if you claim all of it from the front of the transcript.
+
+Left unset, `remaining_turns` edits everything it finds — right only when the
+cache is already cold.
+
 Measured on six real Claude Code sessions (1.16M tokens of transcript), in
 quota units that charge cache reads at 0.1x and cache writes at 1.25x, and
 paying the sweep's re-prime cost in full:

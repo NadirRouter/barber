@@ -48,6 +48,12 @@ STALE = ("[… read omitted: {path} was modified after this read, so this is not
          "current content — read the file again if you need it …]")
 DUPLICATE = "[… identical to an earlier tool result in this conversation …]"
 
+# Anthropic prompt-cache pricing, as multiples of the base input rate: a token
+# written into the cache costs 1.25x, one read back out of it 0.1x (5-minute
+# TTL; the 1h TTL writes at 2x, which only makes the trade below harder).
+_CACHE_WRITE = 1.25
+_CACHE_READ = 0.10
+
 
 def _body_of(inner) -> str:
     if isinstance(inner, str):
@@ -66,7 +72,78 @@ def _parts(messages: list) -> list[tuple[int, int, dict]]:
             if isinstance(p, dict)]
 
 
-def sweep(messages: list, *, min_chars: int = 400) -> "TrimResult":
+def _part_tokens(p: dict, ntok) -> int:
+    if p.get("type") == "tool_use":
+        return ntok(json.dumps(p.get("input") or {}, sort_keys=True))
+    if p.get("type") == "tool_result":
+        return ntok(_body_of(p.get("content")))
+    return ntok(p.get("text") or "")
+
+
+def _replace(p: dict, marker: str) -> dict:
+    if p.get("type") == "tool_use":
+        return {**p, "input": {**p["input"], "content": marker}}
+    return {**p, "content": marker}
+
+
+def _flat(messages: list, ntok) -> list:
+    """(message index, part index, tokens) in conversation order; the part index
+    is None for a message whose content is a bare string. This is the order the
+    prompt cache sees, which is the only order a cut point can be measured in."""
+    out = []
+    for mi, m in enumerate(messages):
+        content = m.get("content")
+        if isinstance(content, str):
+            out.append((mi, None, ntok(content)))
+        elif isinstance(content, list):
+            out.extend((mi, pi, _part_tokens(p, ntok))
+                       for pi, p in enumerate(content) if isinstance(p, dict))
+    return out
+
+
+def _survivors(messages: list, edits: dict, remaining_turns: int, ntok) -> dict:
+    """Keep only the edits whose saving outlives the prompt-cache re-prime.
+
+    An edit at position P invalidates the cache from P onward, so on the next
+    turn every token after P is written again (1.25x) instead of read back
+    (0.1x). What that buys is the removed tokens, no longer re-read on any of
+    the `remaining_turns` turns still to come. With T tokens after the cut and
+    S of them removed, in units of the base input rate:
+
+        gain = READ*n*T - (T-S)*(WRITE - READ + READ*n)
+
+    which turns positive only once S/T clears (WRITE-READ)/(WRITE-READ+READ*n)
+    — 53% of the tail at n=10, 19% at n=50, 10% at n=100. Cutting later costs
+    less and saves less, so every candidate is scored and the best one wins.
+    Everything before the winning cut is left alone, and so stays cached.
+    """
+    flat = _flat(messages, ntok)
+    saved = [tok - _part_tokens(_replace(messages[mi]["content"][pi],
+                                         edits[(mi, pi)]), ntok)
+             if (mi, pi) in edits else 0
+             for mi, pi, tok in flat]
+
+    tail_tok = tail_saved = 0
+    best_gain, best = 0.0, len(flat)
+    for i in range(len(flat) - 1, -1, -1):
+        tail_tok += flat[i][2]
+        tail_saved += saved[i]
+        if not saved[i]:
+            # Cutting between edits inherits the next edit's savings on a
+            # strictly longer tail, so it can never beat cutting at that edit.
+            continue
+        gain = (_CACHE_READ * remaining_turns * tail_tok
+                - (tail_tok - tail_saved)
+                * (_CACHE_WRITE - _CACHE_READ + _CACHE_READ * remaining_turns))
+        if gain > best_gain:
+            best_gain, best = gain, i
+
+    return {(mi, pi): edits[(mi, pi)]
+            for mi, pi, _ in flat[best:] if (mi, pi) in edits}
+
+
+def sweep(messages: list, *, min_chars: int = 400,
+          remaining_turns: int | None = None) -> "TrimResult":
     """Replace superseded, stale, and duplicate tool payloads with markers.
 
     Blocks are never removed, only emptied: an Anthropic request rejects a
@@ -76,6 +153,13 @@ def sweep(messages: list, *, min_chars: int = 400) -> "TrimResult":
     `min_chars` skips small payloads. Editing history costs one prompt-cache
     re-prime of everything after the edit, so clawing back 40 tokens from an
     early message is a net loss however good the accounting looks.
+
+    `remaining_turns` prices that re-prime instead of assuming it away. Pass
+    how many more turns will reuse this cache and the sweep keeps only the
+    edits that pay for themselves over that horizon — walking the cut point
+    later, or declining to edit at all, when the arithmetic says so (see
+    `_survivors`). Left as None it edits everything it finds, which is right
+    only if the cache is already cold.
     """
     from . import TrimResult, _count_tokens, _token_counter
 
@@ -128,27 +212,22 @@ def sweep(messages: list, *, min_chars: int = 400) -> "TrimResult":
             elif tool in _MUTATES and last_full_write.get(path, -1) > order:
                 edits[(mi, pi)] = SUPERSEDED.format(path=path)
 
+    ntok = _token_counter() if edits else None
+    if edits and remaining_turns is not None:
+        edits = _survivors(messages, edits, remaining_turns, ntok)
+
     if not edits:
         return TrimResult(messages=list(messages), tokens_saved=0,
                           chunks_dropped=0, changed=False)
 
     out = []
     for mi, m in enumerate(messages):
-        hits = [pi for (emi, pi) in edits if emi == mi]
-        if not hits:
+        if not any(emi == mi for emi, _ in edits):
             out.append(m); continue
-        new_parts = []
-        for pi, p in enumerate(m["content"]):
-            marker = edits.get((mi, pi))
-            if marker is None:
-                new_parts.append(p)
-            elif p.get("type") == "tool_use":
-                new_parts.append({**p, "input": {**p["input"], "content": marker}})
-            else:
-                new_parts.append({**p, "content": marker})
-        out.append({**m, "content": new_parts})
+        out.append({**m, "content": [
+            _replace(p, edits[(mi, pi)]) if (mi, pi) in edits else p
+            for pi, p in enumerate(m["content"])]})
 
-    ntok = _token_counter()
     saved = _sweep_tokens(messages, ntok) - _sweep_tokens(out, ntok)
     return TrimResult(messages=out, tokens_saved=saved,
                       chunks_dropped=len(edits), changed=True)

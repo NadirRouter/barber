@@ -95,6 +95,34 @@ def test_input_is_not_mutated():
     assert msgs[0]["content"][0]["input"]["content"] == BODY
 
 
+def test_a_short_horizon_declines_the_re_prime():
+    # One dead body, ~half the transcript. Over 10 turns the cache re-prime
+    # costs more than never re-reading it saves, so the honest move is nothing.
+    msgs = [use("1", "Write", "/a.py", BODY), result("1", "ok"),
+            use("2", "Write", "/a.py", OTHER), result("2", "ok")]
+    assert sweep(msgs).changed, "the drop is real; only the economics are in doubt"
+    assert not sweep(msgs, remaining_turns=10).changed
+    assert sweep(msgs, remaining_turns=500).changed, "enough turns to amortize it"
+
+
+def test_the_cut_point_walks_past_the_edits_that_do_not_pay():
+    # Dead body up front, a live wall of context, then a dead body at the end.
+    # Editing from the front re-primes the wall; editing only the tail doesn't.
+    big = "# a much larger file\n" * 1000
+    wall = [(use(str(i), "Read", f"/w{i}.py"), result(str(i), f"line {i}\n" * 400))
+            for i in range(6)]
+    msgs = ([use("a", "Write", "/a.py", BODY), result("a", "ok")]
+            + [m for pair in wall for m in pair]
+            + [use("b", "Write", "/b.py", big), result("b", "ok"),
+               use("c", "Write", "/a.py", BODY), result("c", "ok"),
+               use("d", "Write", "/b.py", big), result("d", "ok")])
+    r = sweep(msgs, remaining_turns=30)
+    assert r.changed
+    kept, dropped = bodies(r.messages)[0], bodies(r.messages)[-6]
+    assert kept == BODY, "the early body is cached; re-priming past it costs more"
+    assert dropped == SUPERSEDED.format(path="/b.py"), "the tail edit pays"
+
+
 def test_noop_reports_nothing():
     r = sweep([{"role": "user", "content": "hi"}])
     assert not r.changed and r.tokens_saved == 0 and r.chunks_dropped == 0
