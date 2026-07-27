@@ -6,21 +6,20 @@ name: release
 #
 # ONE-TIME SETUP, on PyPI (nobody can do this for you, it is an account action):
 #   https://pypi.org/manage/project/barber-llm/settings/publishing/
-#   Add a trusted publisher:
+#   Add a trusted publisher to the EXISTING project (a "pending publisher" is
+#   for projects that do not exist yet and will never match):
 #     Owner:              NadirRouter
 #     Repository:         barber
-#     Workflow filename:  release.yml
-#     Environment:        (leave blank, this workflow declares none)
+#     Workflow filename:  release.yml      <- the filename, not a path, not `name:`
+#     Environment:        LEAVE BLANK      <- this workflow declares none, so any
+#                                             value here can never match
 #
-# Then a tag push publishes. A version that is already tagged can be released
-# with the manual trigger: Actions -> release -> Run workflow.
-#
-# STEP ORDER IS DELIBERATE: cheapest and most likely to fail comes first, so a
-# misconfigured publisher costs one HTTP round trip instead of a full build.
-#   1. auth      - proves PyPI accepts this workflow's identity
-#   2. version   - proves the version is not already burned
-#   3. build     - only then is it worth building anything
-#   4. contents  - proves the wheel is what we think it is
+# STEP ORDER IS DELIBERATE: answer "is there anything to do?" before "can we do
+# it?", and both before spending a build.
+#   1. version  - already on PyPI? then there is nothing to publish; stop, green
+#   2. auth     - prove PyPI accepts this workflow's identity
+#   3. build
+#   4. contents - the wheel is what we think it is
 #   5. publish
 
 on:
@@ -34,9 +33,48 @@ jobs:
     permissions:
       id-token: write        # required for Trusted Publishing; nothing else is
     steps:
-      # No checkout needed: this asks GitHub for an identity token and asks PyPI
-      # whether it accepts it. Nothing about the repo contents matters yet.
+      - uses: actions/checkout@v4
+
+      # A version that is already on PyPI is not an error, it is a no-op: the
+      # upload cannot be repeated (yanking does not free the number), so the only
+      # correct action is to stop. Re-running a release that someone already
+      # published by hand should report "nothing to do", not fail — a red run
+      # that means "everything is fine" trains you to ignore red runs.
+      - name: Is there anything to publish?
+        id: check
+        run: |
+          set -euo pipefail
+          version=$(python3 - <<'PY'
+          import re
+          print(re.search(r'(?m)^version\s*=\s*"([^"]+)"', open("pyproject.toml").read()).group(1))
+          PY
+          )
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          published=$(python3 - "$version" <<'PY'
+          import json, sys, urllib.request
+          try:
+              with urllib.request.urlopen("https://pypi.org/pypi/barber-llm/json", timeout=20) as r:
+                  releases = set(json.load(r)["releases"])
+          except Exception as e:
+              print("no", f"(could not reach PyPI: {e})")
+              raise SystemExit
+          print("yes" if sys.argv[1] in releases else "no")
+          PY
+          )
+          if [ "${published%% *}" = "yes" ]; then
+            echo "todo=no" >> "$GITHUB_OUTPUT"
+            echo "barber-llm $version is already on PyPI. Nothing to publish."
+            echo "Bump the version to release again."
+          else
+            echo "todo=yes" >> "$GITHUB_OUTPUT"
+            echo "barber-llm $version is not on PyPI yet; proceeding."
+          fi
+
+      # Asks GitHub for an identity token and asks PyPI whether it accepts it —
+      # what the publish action does internally, run before anything expensive so
+      # a misconfigured publisher costs one round trip instead of a whole build.
       - name: Prove PyPI accepts this workflow's identity
+        if: steps.check.outputs.todo == 'yes'
         run: |
           set -euo pipefail
           oidc=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
@@ -65,13 +103,12 @@ jobs:
               print(f"  {k:20} = {claims.get(k, '(absent)')}")
           PY
             echo "---------------------------------------"
-            echo "On https://pypi.org/manage/project/barber-llm/settings/publishing/ the"
-            echo "publisher must match ALL of: owner, repository, workflow FILENAME"
-            echo "(release.yml - not a path, not the workflow's name:), and environment."
-            echo "environment above being absent means the PyPI field must be EMPTY;"
-            echo "an environment name set there will never match this workflow."
-            echo "A 'pending publisher' does not apply to a project that already exists -"
-            echo "it must be added under the barber-llm project's own settings."
+            echo "Compare those against the entry on"
+            echo "  https://pypi.org/manage/project/barber-llm/settings/publishing/"
+            echo "environment being absent above means the PyPI field must be EMPTY;"
+            echo "a name set there can never match this workflow. The workflow field"
+            echo "is the FILENAME release.yml, not a path and not the workflow's name:."
+            echo "A pending publisher does not apply to a project that already exists."
             rm -f /tmp/mint.json
             exit 1
           fi
@@ -81,41 +118,13 @@ jobs:
           rm -f /tmp/mint.json
           echo "ok: PyPI accepted this workflow's identity"
 
-      - uses: actions/checkout@v4
-
-      # Reads the version from pyproject rather than from a built artifact, so
-      # this runs before the build. A PyPI upload cannot be undone -- yanking
-      # does not free the number -- so a collision must fail on a readable
-      # message, not a 400 from the upload.
-      - name: Refuse to republish an existing version
-        run: |
-          set -euo pipefail
-          version=$(python3 - <<'PY'
-          import re
-          src = open("pyproject.toml").read()
-          print(re.search(r'(?m)^version\s*=\s*"([^"]+)"', src).group(1))
-          PY
-          )
-          echo "this build is version $version"
-          python3 - "$version" <<'PY'
-          import json, sys, urllib.request
-          version = sys.argv[1]
-          try:
-              with urllib.request.urlopen("https://pypi.org/pypi/barber-llm/json", timeout=20) as r:
-                  released = set(json.load(r)["releases"])
-          except Exception as e:
-              print(f"could not reach PyPI ({e}); letting the upload decide")
-              sys.exit(0)
-          if version in released:
-              sys.exit(f"barber-llm {version} is already on PyPI. Bump the version.")
-          print(f"ok: {version} is not published yet")
-          PY
-
       - uses: actions/setup-python@v5
+        if: steps.check.outputs.todo == 'yes'
         with:
           python-version: "3.12"
 
       - name: Build
+        if: steps.check.outputs.todo == 'yes'
         run: |
           python -m pip install --upgrade pip
           pip install build twine
@@ -126,8 +135,9 @@ jobs:
       # not covered by the published retention benchmark, so it stays reachable
       # from the source tree and out of every installed environment. This
       # invariant rests on pyproject's packages = ["barber"], one edit away from
-      # silently not holding.
+      # silently not holding, and a PyPI upload cannot be undone.
       - name: Refuse to ship contrib in the wheel
+        if: steps.check.outputs.todo == 'yes'
         run: |
           python - <<'PY'
           import glob, sys, zipfile
@@ -140,3 +150,4 @@ jobs:
           PY
 
       - uses: pypa/gh-action-pypi-publish@release/v1
+        if: steps.check.outputs.todo == 'yes'
