@@ -181,13 +181,71 @@ def _group(lines: list[str], is_boundary, *, drop: bool) -> list[str]:
         out.append("\n".join(cur))
     return out
 
+# Chunk delimiters common in RAG concatenation and markdown tool output. The
+# group is CAPTURING so re.split hands the delimiter back instead of eating it:
+# some of these are separators, but some are part of the chunk they introduce.
+_DELIM = re.compile(r"(\n\s*\n|\n-{3,}\n|\n#{1,6}\s|\[\d+\]\s)")
+
+
+def _lead_of(delim: str) -> str:
+    """The part of a delimiter that BELONGS TO the chunk it introduces.
+
+    A blank line separates two chunks and belongs to neither. A heading marker
+    (``## ``) and a citation marker (``[1] ``) are not separators at all — they
+    are the first characters of the passage that follows, and dropping them
+    silently rewrites content barber promised to keep verbatim. A horizontal
+    rule sits between sections; it is kept with the following one so it is not
+    lost either.
+
+    That last choice is a judgement call: in markdown a ``---`` directly under a
+    line of text is a setext H2 underline and belongs to the line ABOVE, so this
+    separates such a heading from its underline. It is still strictly better
+    than before, which deleted the rule outright, and the shapes barber actually
+    sees — RAG document separators, frontmatter fences, thematic breaks in tool
+    output — are overwhelmingly separators rather than setext underlines.
+    """
+    if delim.startswith("["):                       # [1] citation marker
+        return delim
+    stripped = delim.strip("\n")
+    if stripped.startswith("#"):                    # ## heading marker
+        return stripped + " " if not stripped.endswith(" ") else stripped
+    if stripped.startswith("---"):                  # horizontal rule
+        return stripped + "\n"
+    return ""                                       # blank line: pure separator
+
+
 def split_chunks(text: str, min_chunks: int = 4) -> list[str]:
     """Split a block into selectable chunks: prefer blank-line / delimiter
     boundaries (RAG concatenations, tool rows), fall back to sentences, then to
-    line structure for the line-oriented output an agent harness produces."""
-    # explicit chunk delimiters common in RAG concatenation
-    parts = re.split(r"\n\s*\n|\n---+\n|\n#{1,6}\s|\[\d+\]\s", text)
-    parts = [p.strip() for p in parts if p and p.strip()]
+    line structure for the line-oriented output an agent harness produces.
+
+    Structural markers survive on the chunk they introduce. They used to be
+    consumed by the split, so a kept chunk came back as ``auth()`` where the
+    source said ``## auth()``, and RAG passages lost the ``[n]`` anchors a
+    prompt may have asked the model to cite by. Headings that already sat after
+    a blank line kept their marker (the blank line matched first), so the loss
+    hit compact markdown and citation-concatenated blocks — exactly the shapes
+    this splitter exists for.
+    """
+    pieces = _DELIM.split(text)
+    # re.split with one capturing group yields [text, delim, text, delim, ...]
+    parts = []
+    first = pieces[0].strip()
+    if first:
+        parts.append(first)
+    for i in range(1, len(pieces), 2):
+        body = pieces[i + 1].strip() if i + 1 < len(pieces) else ""
+        lead = _lead_of(pieces[i])
+        if not body:
+            # Nothing follows this marker before the next one (back-to-back
+            # markers, or a marker trailed only by spaces — both common in shell
+            # output, where # is a comment). The marker is then the whole
+            # content of its line, so dropping it here would lose the very bytes
+            # this function exists to preserve.
+            if lead.strip():
+                parts.append(lead.strip())
+            continue
+        parts.append(lead + body)
     if len(parts) >= 2:
         # Delimiters found: this is a chunked block, and how many chunks it has
         # is the answer. Too few to bother cutting is a real signal, not a

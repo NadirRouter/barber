@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -243,6 +244,33 @@ S11_CHUNKS = [
 ]
 S11_CTX = block(*S11_CHUNKS)
 
+# Compact markdown: headings with NO blank line before them. The blank-line
+# alternative cannot match here, so this is the shape whose `## ` markers the
+# splitter used to eat, handing the model `auth()` where the source said
+# `## auth()`. Headings that follow a blank line always kept their marker, which
+# is why the defect hid.
+S13_CTX = (
+    "# Service API reference for the billing gateway team\n"
+    "## authorize(card, amount)\n"
+    "Places a hold on the card for the requested amount and returns a handle that settle() later consumes.\n"
+    "## settle(handle)\n"
+    "Captures a previously authorized hold and moves the funds, returning the ledger entry it wrote.\n"
+    "## refund(ledger_entry, amount)\n"
+    "Returns money for a settled charge, partially or in full, and writes a reversing ledger entry.\n"
+    "## void(handle)\n"
+    "Releases an authorization that was never settled, freeing the hold on the customer's card.\n"
+)
+
+# RAG concatenation with numbered citation anchors. A prompt that asks the model
+# to cite sources by number needs these to survive on the passages that are kept.
+S14_CTX = (
+    "[1] Standard shipping arrives in five to seven business days for domestic orders.\n"
+    "[2] Express shipping arrives next business day when ordered before the afternoon cutoff.\n"
+    "[3] The refund window is thirty days from delivery, measured by the carrier's timestamp.\n"
+    "[4] Refunds are issued to the original payment method and post within two billing cycles.\n"
+    "[5] International orders clear customs separately and are not covered by the delivery estimate.\n"
+)
+
 S12_CTX = block(
     "Weekly minerals desk notes for subscribers, spanning the metals board and the specialty stones.",
     "Copper held flat through the week while the exchange warehouses reported thinner inventories.",
@@ -434,6 +462,28 @@ SCENARIOS = [
         "messages": [
             {"role": "user", "content": S12_CTX},
             {"role": "user", "content": "What is the garnet price today?"},
+        ],
+    },
+    {
+        # Kept chunks must still carry their `## ` markers.
+        "name": "compact_markdown_headings",
+        "keep": 0.5,
+        "wantChanged": True,
+        "cfg": {"minMessageChars": 200},
+        "messages": [
+            {"role": "user", "content": S13_CTX},
+            {"role": "user", "content": "How do I refund a settled charge?"},
+        ],
+    },
+    {
+        # Kept passages must still carry their `[n]` citation anchors.
+        "name": "rag_citation_anchors",
+        "keep": 0.5,
+        "wantChanged": True,
+        "cfg": {"minMessageChars": 200},
+        "messages": [
+            {"role": "user", "content": S14_CTX},
+            {"role": "user", "content": "What is the refund window?"},
         ],
     },
     {
@@ -629,6 +679,21 @@ def sanity(cases: list) -> None:
                  "bankers_rounding", "negative_savings", "scattered_markers"):
         blk = by[name]["messages"][0 if by[name]["messages"][0]["role"] != "system" else 1]
         assert len(blk["content"]) >= 800, name
+
+    # compact_markdown_headings / rag_citation_anchors: the splitter used to eat
+    # the delimiter it split on, so a kept chunk came back as `refund(...)` where
+    # the source said `## refund(...)`, and RAG passages lost the [n] anchors a
+    # prompt may ask the model to cite by. Every surviving chunk must still carry
+    # its marker, and the gold chunk must be among the survivors.
+    md = by["compact_markdown_headings"]["expected"]["messages"][0]["content"]
+    assert "## refund(ledger_entry, amount)" in md, md[:200]
+    assert md.count("## ") == md.count("(") - md.count("omitted"), \
+        "a kept heading lost its marker"
+    rag = by["rag_citation_anchors"]["expected"]["messages"][0]["content"]
+    assert "[3] The refund window" in rag, rag[:200]
+    for line in rag.splitlines():
+        if line.strip() and "omitted" not in line:
+            assert re.match(r"\[\d+\] ", line), f"kept passage lost its anchor: {line[:60]}"
 
     # noop_gates: untouched means the exact same message objects came back
     noop = by["noop_gates"]

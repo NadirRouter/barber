@@ -171,9 +171,42 @@ function splitLines(text, minChunks) {
 // Split a block into selectable chunks: prefer blank-line / delimiter
 // boundaries (RAG concatenations, tool rows), fall back to sentences, then to
 // line structure for the line-oriented output an agent harness produces.
+// The group is CAPTURING so split hands the delimiter back instead of eating
+// it: some of these are separators, but some are part of the chunk they
+// introduce. Mirrors _DELIM in core.py.
+const DELIM = /(\n\s*\n|\n-{3,}\n|\n#{1,6}\s|\[\d+\]\s)/;
+
+// The part of a delimiter that BELONGS TO the chunk it introduces. A blank line
+// separates two chunks and belongs to neither; a heading marker (`## `) and a
+// citation marker (`[1] `) are the first characters of the passage that
+// follows, and dropping them silently rewrites content barber promised to keep
+// verbatim. Mirrors _lead_of in core.py.
+function leadOf(delim) {
+  if (delim.startsWith("[")) return delim;
+  const stripped = delim.replace(/^\n+/, "").replace(/\n+$/, "");
+  if (stripped.startsWith("#")) return stripped.endsWith(" ") ? stripped : stripped + " ";
+  if (stripped.startsWith("---")) return stripped + "\n";
+  return "";
+}
+
 export function splitChunks(text, minChunks = DEFAULT_CONFIG.minChunks) {
-  let parts = text.split(/\n\s*\n|\n---+\n|\n#{1,6}\s|\[\d+\]\s/);
-  parts = parts.map((p) => p.trim()).filter(Boolean);
+  // String.split with one capturing group yields [text, delim, text, delim, ...]
+  const pieces = text.split(DELIM);
+  const parts = [];
+  const first = pieces[0].trim();
+  if (first) parts.push(first);
+  for (let i = 1; i < pieces.length; i += 2) {
+    const body = i + 1 < pieces.length ? pieces[i + 1].trim() : "";
+    const lead = leadOf(pieces[i]);
+    if (!body) {
+      // Nothing follows this marker before the next one (back-to-back markers,
+      // or a marker trailed only by spaces — both common in shell output, where
+      // # is a comment). The marker is then the whole content of its line.
+      if (lead.trim()) parts.push(lead.trim());
+      continue;
+    }
+    parts.push(lead + body);
+  }
   // Delimiters found: this is a chunked block, and how many chunks it has is
   // the answer. Too few to bother cutting is a real signal, not a failure to
   // look harder — do not fall through.

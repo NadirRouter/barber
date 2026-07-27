@@ -510,6 +510,70 @@
    "name": "custom_cfg_marker"
   },
   {
+   "cfg": {
+    "minMessageChars": 200
+   },
+   "expected": {
+    "changed": true,
+    "chunksDropped": 2,
+    "messages": [
+     {
+      "content": "# Service API reference for the billing gateway team\n\n[\u2026 2 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\n## refund(ledger_entry, amount)\nReturns money for a settled charge, partially or in full, and writes a reversing ledger entry.\n\n## void(handle)\nReleases an authorization that was never settled, freeing the hold on the customer's card.",
+      "role": "user"
+     },
+     {
+      "content": "How do I refund a settled charge?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 36
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "# Service API reference for the billing gateway team\n## authorize(card, amount)\nPlaces a hold on the card for the requested amount and returns a handle that settle() later consumes.\n## settle(handle)\nCaptures a previously authorized hold and moves the funds, returning the ledger entry it wrote.\n## refund(ledger_entry, amount)\nReturns money for a settled charge, partially or in full, and writes a reversing ledger entry.\n## void(handle)\nReleases an authorization that was never settled, freeing the hold on the customer's card.\n",
+     "role": "user"
+    },
+    {
+     "content": "How do I refund a settled charge?",
+     "role": "user"
+    }
+   ],
+   "name": "compact_markdown_headings"
+  },
+  {
+   "cfg": {
+    "minMessageChars": 200
+   },
+   "expected": {
+    "changed": true,
+    "chunksDropped": 1,
+    "messages": [
+     {
+      "content": "[1] Standard shipping arrives in five to seven business days for domestic orders.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\n[3] The refund window is thirty days from delivery, measured by the carrier's timestamp.\n\n[4] Refunds are issued to the original payment method and post within two billing cycles.\n\n[5] International orders clear customs separately and are not covered by the delivery estimate.",
+      "role": "user"
+     },
+     {
+      "content": "What is the refund window?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": -3
+   },
+   "keep": 0.5,
+   "messages": [
+    {
+     "content": "[1] Standard shipping arrives in five to seven business days for domestic orders.\n[2] Express shipping arrives next business day when ordered before the afternoon cutoff.\n[3] The refund window is thirty days from delivery, measured by the carrier's timestamp.\n[4] Refunds are issued to the original payment method and post within two billing cycles.\n[5] International orders clear customs separately and are not covered by the delivery estimate.\n",
+     "role": "user"
+    },
+    {
+     "content": "What is the refund window?",
+     "role": "user"
+    }
+   ],
+   "name": "rag_citation_anchors"
+  },
+  {
    "cfg": null,
    "expected": {
     "changed": true,
