@@ -56,12 +56,23 @@ def test_fail_open_on_garbage_input():
     assert p.returncode == 0 and p.stdout == ""
 
 
-def test_missing_barber_says_so_instead_of_going_quiet():
+def test_missing_barber_says_so_instead_of_going_quiet(tmp_path):
     """A hook that silently does nothing because the import failed looks exactly
-    like one that is working and finding no savings."""
-    env = {**os.environ, "PYTHONPATH": "/nonexistent"}
+    like one that is working and finding no savings.
+
+    The unimportable barber is SIMULATED with a stub package first on
+    PYTHONPATH, not by pointing PYTHONPATH somewhere empty: CI installs barber
+    into site-packages (`pip install .`), so an empty path proves nothing there
+    and the test passed only on a machine where barber happened to be missing.
+    """
+    stub = tmp_path / "barber"
+    stub.mkdir()
+    (stub / "__init__.py").write_text("raise ImportError('simulated: barber not installed')\n")
+
+    env = {**os.environ, "PYTHONPATH": str(tmp_path)}
     p = subprocess.run([sys.executable, str(HOOK)], capture_output=True, text=True, env=env,
                        input=json.dumps({"tool_name": "Grep", "tool_input": {},
-                                         "tool_response": GREP_HITS}), cwd="/tmp")
-    assert p.returncode == 0 and p.stdout == ""
-    assert "cannot import barber" in p.stderr
+                                         "tool_response": GREP_HITS}), cwd=str(tmp_path))
+    assert p.returncode == 0, "a broken install must not fail the tool call"
+    assert p.stdout == "", "no envelope means the tool output passes through untouched"
+    assert "cannot import barber" in p.stderr, "the failure left no trace in the hook log"
