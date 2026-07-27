@@ -50,10 +50,28 @@ jobs:
             echo "PyPI refused this workflow's identity (HTTP $code)."
             echo "--- PyPI said ---"
             cat /tmp/mint.json; echo
-            echo "-----------------"
-            echo "Add a trusted publisher at:"
-            echo "  https://pypi.org/manage/project/barber-llm/settings/publishing/"
-            echo "  owner=NadirRouter  repo=barber  workflow=release.yml  environment=(blank)"
+            echo "--- the claims PyPI matched against ---"
+            # The JWT payload is not a secret (the signature is what authenticates
+            # it) and these are exactly the fields a trusted publisher matches on,
+            # so print them: "no corresponding publisher" is unactionable without
+            # knowing WHICH field disagrees.
+            python3 - "$oidc" <<'PY'
+          import base64, json, sys
+          payload = sys.argv[1].split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          for k in ("repository", "repository_owner", "workflow_ref",
+                    "job_workflow_ref", "ref", "environment", "sub"):
+              print(f"  {k:20} = {claims.get(k, '(absent)')}")
+          PY
+            echo "---------------------------------------"
+            echo "On https://pypi.org/manage/project/barber-llm/settings/publishing/ the"
+            echo "publisher must match ALL of: owner, repository, workflow FILENAME"
+            echo "(release.yml - not a path, not the workflow's name:), and environment."
+            echo "environment above being absent means the PyPI field must be EMPTY;"
+            echo "an environment name set there will never match this workflow."
+            echo "A 'pending publisher' does not apply to a project that already exists -"
+            echo "it must be added under the barber-llm project's own settings."
             rm -f /tmp/mint.json
             exit 1
           fi
