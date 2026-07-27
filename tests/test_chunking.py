@@ -82,3 +82,58 @@ def test_a_read_result_now_actually_gets_trimmed():
     kept = r.messages[2]["content"][0]["content"]
     assert "parse_yaml_config" in kept, "the chunk that answers the question survives"
     assert r.messages[3] == msgs[3], "the question itself is never trimmed"
+
+
+# The shapes an adversarial review used to break the delimiter-preserving
+# splitter. Each one previously produced a chunk containing characters that were
+# not in the source, or silently turned trimming off.
+VERBATIM_SHAPES = [
+    "body\n##\nheading text\n\nmore para\n\nyet another para",      # \s matched a newline
+    "body\n##\theading text\n\nmore para\n\nyet another para",      # \s matched a tab
+    "body\n##\xa0heading text\n\nmore para\n\nyet another para",    # \s matched an NBSP
+    "import os\nimport sys\n#\n# Config section\n#\nDEBUG = True\nPORT = 8080",
+    "# Copyright 2024 Acme\n#\n# Licensed under Apache\n#\n# http://x/LICENSE\n",
+    "intro line\n##\tTabbed Heading\nbody text\n\nnext para\n",
+    "# API\n## auth()\nCall auth here.\n## logout()\nEnds session.\n## refresh()\nRotates.",
+    "[1] pricing passage.\n[2] latency passage.\n[3] regions.\n[4] quotas.",
+    "alpha\n---\nbeta body\n---\ngamma body\n---\ndelta body",
+    "Para one.\n\nPara two.\n\nPara three.\n\nPara four.",
+]
+
+
+def test_chunks_never_contain_characters_the_source_did_not():
+    """The contract is that a kept chunk is the source's bytes, not a rebuild of
+    them. An earlier version reconstructed a heading lead as ``marker + " "``,
+    which fabricated a space whenever the pattern's ``\\s`` had matched a
+    newline, tab, or NBSP — so ``##\\nheading`` reached the model as
+    ``## heading``, a string that was never written.
+
+    Asserted as a STRICT substring, deliberately. The first version of this test
+    compared the two with whitespace collapsed, and passed against the very bug
+    it was written for — collapsing turns the fabricated space back into the
+    newline it replaced. A weaker predicate here is worse than no test, because
+    it reads as coverage."""
+    for src in VERBATIM_SHAPES:
+        for chunk in split_chunks(src):
+            assert chunk in src, f"chunk {chunk!r} is not a substring of {src!r}"
+
+
+def test_a_trailing_marker_does_not_switch_trimming_off():
+    """A bare marker at the end of a block carries no content, so it must not
+    count toward the ">= 2 parts means this block is chunked" decision. Counting
+    it let a single trailing `---` yield two parts, satisfy that test, and hand
+    back a 2-chunk block that _select_block then declined for being under
+    min_chunks — silently disabling trimming for a block that used to be handled
+    by the sentence splitter."""
+    prose = ("The queue drains at two thousand events per second.\n"
+             "Retries use exponential backoff with jitter.\n"
+             "Metrics ship every ten seconds.\n"
+             "Scale the consumer group to zero before redeploying.\n") * 6
+    q = {"role": "user", "content": "how do retries work?"}
+
+    plain = trim([{"role": "user", "content": prose}, q], keep=0.5)
+    trailing = trim([{"role": "user", "content": prose + "---\n"}, q], keep=0.5)
+
+    assert plain.changed, "fixture stopped being trimmable; test would be vacuous"
+    assert trailing.changed, "a trailing rule silently disabled trimming"
+    assert trailing.chunks_dropped > 0

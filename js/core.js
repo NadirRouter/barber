@@ -181,36 +181,48 @@ const DELIM = /(\n\s*\n|\n-{3,}\n|\n#{1,6}\s|\[\d+\]\s)/;
 // citation marker (`[1] `) are the first characters of the passage that
 // follows, and dropping them silently rewrites content barber promised to keep
 // verbatim. Mirrors _lead_of in core.py.
+// The lead is the delimiter's own bytes, never a reconstruction: rebuilding it
+// as `stripped + " "` fabricated a space whenever \s matched a newline, tab, or
+// NBSP, so `##\nheading` came back as `## heading` — a string not in the source.
 function leadOf(delim) {
-  if (delim.startsWith("[")) return delim;
-  const stripped = delim.replace(/^\n+/, "").replace(/\n+$/, "");
-  if (stripped.startsWith("#")) return stripped.endsWith(" ") ? stripped : stripped + " ";
-  if (stripped.startsWith("---")) return stripped + "\n";
-  return "";
+  if (!delim.trim()) return "";                 // blank line: pure separator
+  return delim.replace(/^\n+/, "");             // drop only the anchoring newline
 }
 
 export function splitChunks(text, minChunks = DEFAULT_CONFIG.minChunks) {
   // String.split with one capturing group yields [text, delim, text, delim, ...]
   const pieces = text.split(DELIM);
   const parts = [];
+  let bodies = 0;                 // parts backed by real content, not a bare marker
   const first = pieces[0].trim();
-  if (first) parts.push(first);
+  if (first) {
+    parts.push(first);
+    bodies++;
+  }
   for (let i = 1; i < pieces.length; i += 2) {
-    const body = i + 1 < pieces.length ? pieces[i + 1].trim() : "";
+    const raw = i + 1 < pieces.length ? pieces[i + 1] : "";
     const lead = leadOf(pieces[i]);
+    // With a lead attached, keep the body's LEADING whitespace so lead + body is
+    // a contiguous slice of the source and a chunk is verifiably a substring of
+    // the input. Without a lead the delimiter was a pure separator and both ends
+    // trim, which is the behaviour every fixture was generated against.
+    const body = raw.trim() ? (lead ? raw.replace(/\s+$/, "") : raw.trim()) : "";
     if (!body) {
-      // Nothing follows this marker before the next one (back-to-back markers,
-      // or a marker trailed only by spaces — both common in shell output, where
-      // # is a comment). The marker is then the whole content of its line.
+      // Keep a bare marker's bytes, but do NOT count it as a chunk: counting it
+      // let a single trailing `---` reach the >= 2 test below and return a
+      // 2-chunk block, which _select_block then declined for being under
+      // minChunks — silently disabling trimming for a block the sentence
+      // splitter used to handle.
       if (lead.trim()) parts.push(lead.trim());
       continue;
     }
     parts.push(lead + body);
+    bodies++;
   }
   // Delimiters found: this is a chunked block, and how many chunks it has is
   // the answer. Too few to bother cutting is a real signal, not a failure to
   // look harder — do not fall through.
-  if (parts.length >= 2) return parts;
+  if (bodies >= 2) return parts;
   const sents = text
     .trim()
     .split(/(?<=[.!?])\s+/)

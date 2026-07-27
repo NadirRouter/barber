@@ -203,15 +203,19 @@ def _lead_of(delim: str) -> str:
     than before, which deleted the rule outright, and the shapes barber actually
     sees — RAG document separators, frontmatter fences, thematic breaks in tool
     output — are overwhelmingly separators rather than setext underlines.
+
+    The lead is the delimiter's own bytes, never a reconstruction of them. An
+    earlier version rebuilt the heading lead as ``stripped + " "``, which
+    fabricated a space whenever the pattern's ``\\s`` matched something other
+    than one: ``##\\nheading`` came back as ``## heading``, a string not present
+    in the source. That arm was reachable ONLY when it was wrong, since a plain
+    ``\\n## `` already ends in its space.
     """
-    if delim.startswith("["):                       # [1] citation marker
-        return delim
-    stripped = delim.strip("\n")
-    if stripped.startswith("#"):                    # ## heading marker
-        return stripped + " " if not stripped.endswith(" ") else stripped
-    if stripped.startswith("---"):                  # horizontal rule
-        return stripped + "\n"
-    return ""                                       # blank line: pure separator
+    if not delim.strip():                           # blank line: pure separator
+        return ""
+    # Drop only the leading newline the pattern needed to anchor on; everything
+    # after it is source text and is returned byte-for-byte.
+    return delim.lstrip("\n")
 
 
 def split_chunks(text: str, min_chunks: int = 4) -> list[str]:
@@ -230,23 +234,35 @@ def split_chunks(text: str, min_chunks: int = 4) -> list[str]:
     pieces = _DELIM.split(text)
     # re.split with one capturing group yields [text, delim, text, delim, ...]
     parts = []
+    bodies = 0          # parts backed by real content, not by a bare marker
     first = pieces[0].strip()
     if first:
         parts.append(first)
+        bodies += 1
     for i in range(1, len(pieces), 2):
-        body = pieces[i + 1].strip() if i + 1 < len(pieces) else ""
+        raw = pieces[i + 1] if i + 1 < len(pieces) else ""
         lead = _lead_of(pieces[i])
+        # With a lead attached, keep the body's LEADING whitespace: lead + body
+        # is then a contiguous slice of the source, so a chunk is verifiably a
+        # substring of the input rather than something close to one. Without a
+        # lead the delimiter was a pure separator and both ends strip, which is
+        # the long-standing behaviour every fixture was generated against.
+        body = (raw.rstrip() if lead else raw.strip()) if raw.strip() else ""
         if not body:
             # Nothing follows this marker before the next one (back-to-back
-            # markers, or a marker trailed only by spaces — both common in shell
-            # output, where # is a comment). The marker is then the whole
-            # content of its line, so dropping it here would lose the very bytes
-            # this function exists to preserve.
+            # markers, a trailing rule, or a marker trailed only by spaces — all
+            # ordinary in shell output, where # is a comment). Keep the marker so
+            # its bytes are not lost, but do NOT count it as a chunk: it carries
+            # no content, and counting it let a single trailing `---` produce two
+            # parts, satisfy the >= 2 test below, and return a 2-chunk block that
+            # _select_block then declined for being under min_chunks — silently
+            # disabling trimming for a block the sentence splitter used to handle.
             if lead.strip():
                 parts.append(lead.strip())
             continue
         parts.append(lead + body)
-    if len(parts) >= 2:
+        bodies += 1
+    if bodies >= 2:
         # Delimiters found: this is a chunked block, and how many chunks it has
         # is the answer. Too few to bother cutting is a real signal, not a
         # failure to look harder — leave that decision where the benchmark set
