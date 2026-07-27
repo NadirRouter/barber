@@ -187,3 +187,31 @@ def test_changed_flag_matches_output():
     untouched = trim(msgs(block(TOPICS[1:6])), keep=0.6)
     assert untouched.changed is False
     assert untouched.messages == msgs(block(TOPICS[1:6]))
+
+
+def test_a_broken_embedder_costs_the_trim_not_the_request():
+    """barber sits in the request path. An injected embedder that raises — a
+    down encoder endpoint, numpy missing on the dense path, a model returning
+    the wrong arity — must cost the trimming, not the conversation. Before the
+    fail-open wrapper the exception propagated out of trim() and killed the
+    request it was supposed to be making cheaper."""
+    def broken(texts):
+        raise RuntimeError("encoder endpoint down")
+
+    original = msgs(block(TOPICS))
+    result = trim(original, keep=0.6, embedder=broken)
+    assert result.changed is False
+    assert result.tokens_saved == 0 and result.chunks_dropped == 0
+    assert result.messages == original, "context must pass through untouched"
+
+
+def test_fail_open_does_not_hide_the_failure(caplog):
+    """Fail-open, not fail-silent: an encoder that is permanently broken saves
+    nothing forever, and a caller with no log line has no way to notice."""
+    def broken(texts):
+        raise RuntimeError("encoder endpoint down")
+
+    with caplog.at_level("WARNING"):
+        trim(msgs(block(TOPICS)), keep=0.6, embedder=broken)
+    assert any("encoder endpoint down" in r.getMessage() or r.exc_info
+               for r in caplog.records), "the failure was swallowed without a trace"

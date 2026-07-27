@@ -59,6 +59,33 @@ def test_ranking_prefers_the_dense_chunk_over_the_filler():
         f"ranking kept {len(middle_fillers_kept)} fillers; gold should outrank them")
 
 
+def test_zero_signal_leaves_the_budget_in_charge():
+    """No chunk shares a token with the query, so every score is 0 and the
+    ranking carries no information. The relative floor is *relative* — with a
+    top score of 0 it has nothing to be relative to and must not cull. Kills the
+    `max(scores) or 1e-9` mutant, which floored at 3.5e-10, failed every zero
+    score, and collapsed the block to lead+tail at any keep."""
+    chunks = [
+        f"Section {i} of the walking guide covers the harbor route, the tram "
+        f"line, and the evening market stalls near quay number {i} in town."
+        for i in range(10)
+    ]
+    text = "\n\n".join(chunks)
+    assert len(text) >= 800
+    hebrew = [{"role": "user", "content": text},
+              {"role": "user", "content": "מהי מדיניות ההחזרות בחנות המוזיאון?"}]
+
+    keep_all = trim(hebrew, keep=1.0)
+    assert not keep_all.changed, "keep=1.0 asked to drop nothing; it dropped some"
+    assert keep_all.messages[0]["content"] == text
+
+    # And with a real budget the budget alone decides: 10 chunks at keep=0.6 is
+    # 6 by ratio plus the tail guard, not a collapse to two.
+    budgeted = trim(hebrew, keep=0.6)
+    kept = sum(1 for c in chunks if c in budgeted.messages[0]["content"])
+    assert kept == 7, f"budget should decide with no signal, kept {kept}"
+
+
 def test_keep_controls_how_much_survives():
     """Kills any mutant where `keep` stops reaching the budget: on a fixture with
     no floor saturation, more budget must mean more chunks."""

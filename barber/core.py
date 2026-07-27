@@ -40,11 +40,13 @@ the message-transform signature of a Nadir-style optimizer pipeline:
     fn(messages: list[dict]) -> tuple[list[dict], bool]
 """
 from __future__ import annotations
-import hashlib, re, math
+import hashlib, logging, re, math
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from .embedders import lexical as make_lexical_embedder
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Config
@@ -245,7 +247,15 @@ def _select_block(text: str, query: str, embed_fn, keep_ratio: float,
     qv = vecs[-1]; cvs = vecs[:-1]
     sim = _cos if isinstance(qv, dict) else _cos_vec
     scores = [sim(cv, qv) for cv in cvs]
-    top = max(scores) or 1e-9
+    # A *relative* floor needs something to be relative to. When no chunk shares
+    # a token with the query -- a non-Latin-script query on the lexical
+    # embedder, a block on a wholly different subject -- every score is 0 and
+    # the ranking carries no signal at all. The old `max(scores) or 1e-9` turned
+    # that into a floor of 3.5e-10 that every zero score failed, collapsing the
+    # block to lead+tail even at keep=1.0, where the caller asked to drop
+    # nothing. With no signal to discriminate on, the budget alone decides.
+    top = max(scores)
+    floor = top * cfg.relative_floor if top > 0 else 0.0
 
     n = len(chunks)
     keep_n = max(1, min(n, round(n * keep_ratio)))
@@ -259,7 +269,7 @@ def _select_block(text: str, query: str, embed_fn, keep_ratio: float,
         if _is_pinned(chunks[i], rare_query_entities):
             keep.add(i)
     # drop anything far below the top even if budget kept it
-    keep = {i for i in keep if scores[i] >= top * cfg.relative_floor or _is_pinned(chunks[i], rare_query_entities) or i in (0, n-1)}
+    keep = {i for i in keep if scores[i] >= floor or _is_pinned(chunks[i], rare_query_entities) or i in (0, n-1)}
 
     if len(keep) >= n:
         return text, False
@@ -324,7 +334,7 @@ def make_selection_transform(
                     return q
         return ""
 
-    def transform(messages: list[dict]) -> tuple[list[dict], bool]:
+    def _select_messages(messages: list[dict]) -> tuple[list[dict], bool]:
         query = _query_of(messages)
         if not query:
             return messages, False
@@ -397,6 +407,20 @@ def make_selection_transform(
 
         transform.last_stats = stats
         return out_msgs, changed_any
+
+    def transform(messages: list[dict]) -> tuple[list[dict], bool]:
+        """Fail-open wrapper. A context optimizer must never be the reason a
+        request dies: an injected embedder that raises (encoder endpoint down,
+        numpy missing on the dense path, a model that returns the wrong arity)
+        should cost the trim, not the conversation. The failure is logged, not
+        swallowed silently — a permanently-broken encoder that quietly saves
+        nothing is its own kind of outage."""
+        try:
+            return _select_messages(messages)
+        except Exception:
+            logger.warning("barber: selection failed, context passed through untrimmed",
+                           exc_info=True)
+            return messages, False
 
     transform.last_stats = SelectionStats()
     return ("context_selection", transform)

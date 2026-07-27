@@ -1,5 +1,5 @@
 {
- "barberVersion": "0.1.1",
+ "barberVersion": "0.1.2",
  "cases": [
   {
    "cfg": null,
@@ -419,10 +419,10 @@
    "cfg": null,
    "expected": {
     "changed": true,
-    "chunksDropped": 4,
+    "chunksDropped": 1,
     "messages": [
      {
-      "content": "The old town walking route begins at the clock tower and follows the river wall past the merchant houses toward the stone bridge and its twin gatehouses.\n\n[\u2026 4 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nA city pass covers the funicular, both museums, and the bridge towers, and it pays for itself within a single afternoon of ordinary sightseeing.",
+      "content": "The old town walking route begins at the clock tower and follows the river wall past the merchant houses toward the stone bridge and its twin gatehouses.\n\nLocal bakeries open before sunrise, and the corner shop by the fountain sells the seeded loaf that the market guides mention in every seasonal pamphlet.\n\nThe maritime museum keeps the tide tables from the harbor's founding century on display beside the restored pilot boat and the original lens from the lighthouse.\n\nTram line four circles the hill district and offers the best rooftop views on the descent toward the botanical garden and the glasshouse promenade.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nA city pass covers the funicular, both museums, and the bridge towers, and it pays for itself within a single afternoon of ordinary sightseeing.",
       "role": "user"
      },
      {
@@ -430,7 +430,37 @@
       "role": "user"
      }
     ],
-    "tokensSaved": 130
+    "tokensSaved": 13
+   },
+   "keep": 0.6,
+   "messages": [
+    {
+     "content": "The old town walking route begins at the clock tower and follows the river wall past the merchant houses toward the stone bridge and its twin gatehouses.\n\nLocal bakeries open before sunrise, and the corner shop by the fountain sells the seeded loaf that the market guides mention in every seasonal pamphlet.\n\nThe maritime museum keeps the tide tables from the harbor's founding century on display beside the restored pilot boat and the original lens from the lighthouse.\n\nTram line four circles the hill district and offers the best rooftop views on the descent toward the botanical garden and the glasshouse promenade.\n\nThe evening market on the quay runs Thursday through Sunday, with the fish stalls closing first and the spice sellers staying open until the last ferry.\n\nA city pass covers the funicular, both museums, and the bridge towers, and it pays for itself within a single afternoon of ordinary sightseeing.",
+     "role": "user"
+    },
+    {
+     "content": "\u05de\u05d4\u05d9 \u05de\u05d3\u05d9\u05e0\u05d9\u05d5\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d5\u05ea \u05d1\u05d7\u05e0\u05d5\u05ea \u05d4\u05de\u05d5\u05d6\u05d9\u05d0\u05d5\u05df?",
+     "role": "user"
+    }
+   ],
+   "name": "zero_overlap_budget"
+  },
+  {
+   "cfg": null,
+   "expected": {
+    "changed": false,
+    "chunksDropped": 0,
+    "messages": [
+     {
+      "content": "The old town walking route begins at the clock tower and follows the river wall past the merchant houses toward the stone bridge and its twin gatehouses.\n\nLocal bakeries open before sunrise, and the corner shop by the fountain sells the seeded loaf that the market guides mention in every seasonal pamphlet.\n\nThe maritime museum keeps the tide tables from the harbor's founding century on display beside the restored pilot boat and the original lens from the lighthouse.\n\nTram line four circles the hill district and offers the best rooftop views on the descent toward the botanical garden and the glasshouse promenade.\n\nThe evening market on the quay runs Thursday through Sunday, with the fish stalls closing first and the spice sellers staying open until the last ferry.\n\nA city pass covers the funicular, both museums, and the bridge towers, and it pays for itself within a single afternoon of ordinary sightseeing.",
+      "role": "user"
+     },
+     {
+      "content": "\u05de\u05d4\u05d9 \u05de\u05d3\u05d9\u05e0\u05d9\u05d5\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d5\u05ea \u05d1\u05d7\u05e0\u05d5\u05ea \u05d4\u05de\u05d5\u05d6\u05d9\u05d0\u05d5\u05df?",
+      "role": "user"
+     }
+    ],
+    "tokensSaved": 0
    },
    "keep": 1.0,
    "messages": [
@@ -443,7 +473,7 @@
      "role": "user"
     }
    ],
-   "name": "zero_overlap_collapse"
+   "name": "zero_overlap_keep_all"
   },
   {
    "cfg": {

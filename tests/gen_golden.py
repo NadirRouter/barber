@@ -233,14 +233,15 @@ S10_BLOCK = block(
     "Data export is available on both plans from the workspace settings page, and closed accounts keep export access for sixty days after cancellation takes effect.",
 )
 
-S11_CTX = block(
+S11_CHUNKS = [
     "The old town walking route begins at the clock tower and follows the river wall past the merchant houses toward the stone bridge and its twin gatehouses.",
     "Local bakeries open before sunrise, and the corner shop by the fountain sells the seeded loaf that the market guides mention in every seasonal pamphlet.",
     "The maritime museum keeps the tide tables from the harbor's founding century on display beside the restored pilot boat and the original lens from the lighthouse.",
     "Tram line four circles the hill district and offers the best rooftop views on the descent toward the botanical garden and the glasshouse promenade.",
     "The evening market on the quay runs Thursday through Sunday, with the fish stalls closing first and the spice sellers staying open until the last ferry.",
     "A city pass covers the funicular, both museums, and the bridge towers, and it pays for itself within a single afternoon of ordinary sightseeing.",
-)
+]
+S11_CTX = block(*S11_CHUNKS)
 
 S12_CTX = block(
     "Weekly minerals desk notes for subscribers, spanning the metals board and the specialty stones.",
@@ -400,9 +401,26 @@ SCENARIOS = [
         ],
     },
     {
-        "name": "zero_overlap_collapse",
-        "keep": 1.0,
+        # A query sharing no token with any chunk (non-Latin script on the
+        # lexical embedder) scores every chunk 0. There is no signal to rank on,
+        # so the keep budget alone decides — the relative floor has nothing to
+        # be relative to and must not cull. Previously `max(scores) or 1e-9`
+        # made every zero score fail the floor and collapsed the block to
+        # lead+tail regardless of keep.
+        "name": "zero_overlap_budget",
+        "keep": 0.6,
         "wantChanged": True,
+        "messages": [
+            {"role": "user", "content": S11_CTX},
+            {"role": "user", "content": "מהי מדיניות ההחזרות בחנות המוזיאון?"},
+        ],
+    },
+    {
+        # Same zero-signal block at keep=1.0: the caller asked to drop nothing,
+        # so nothing drops. This is the case the old floor got wrong.
+        "name": "zero_overlap_keep_all",
+        "keep": 1.0,
+        "wantChanged": False,
         "messages": [
             {"role": "user", "content": S11_CTX},
             {"role": "user", "content": "מהי מדיניות ההחזרות בחנות המוזיאון?"},
@@ -587,10 +605,18 @@ def sanity(cases: list) -> None:
     dup = by["duplicate_block_cache"]["expected"]["messages"]
     assert dup[1]["content"] == dup[3]["content"] != S10_BLOCK
 
-    # zero_overlap_collapse: no shared token at keep=1.0 collapses to
-    # lead + tail with one four-chunk marker (known locked behavior).
-    col = by["zero_overlap_collapse"]["expected"]["messages"][0]["content"]
-    assert "4 passage(s) omitted" in col
+    # zero_overlap_*: with no shared token every score is 0, so the budget
+    # decides and the relative floor stays out of it. keep=1.0 must be a no-op
+    # (the old `or 1e-9` floor collapsed it to lead+tail and dropped 4 of 6);
+    # keep=0.6 must drop exactly what the ratio asks for, no more.
+    assert by["zero_overlap_keep_all"]["expected"]["chunksDropped"] == 0
+    assert by["zero_overlap_keep_all"]["expected"]["changed"] is False
+    # 6 chunks, keep=0.6 -> round(3.6)=4 by budget, plus the tail keep-guard
+    # adds chunk 5, so exactly one middle chunk goes. The old floor dropped 4.
+    zb = by["zero_overlap_budget"]["expected"]
+    assert zb["chunksDropped"] == 1, zb["chunksDropped"]
+    assert S11_CHUNKS[0] in zb["messages"][0]["content"]
+    assert S11_CHUNKS[-1] in zb["messages"][0]["content"]
 
     # custom_cfg_marker: leading AND trailing markers, custom template with
     # regex-special characters, keepLeadTail off (lead/tail dropped).

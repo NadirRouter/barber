@@ -22,7 +22,7 @@ from typing import Callable, Optional
 from .core import SelectionConfig, make_selection_transform
 from .core import _text_of
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = ["trim", "TrimResult", "make_transform", "Cache", "SelectionConfig", "__version__"]
 
@@ -198,6 +198,14 @@ def trim(
 
     `tokens_saved` is signed. Negative means the markers cost more than the
     dropped chunks saved, which is worth acting on rather than hiding.
+
+    PASS A `cache` IN A MULTI-TURN LOOP. Without one, every call starts a fresh
+    decision cache and re-selects each block against that turn's question — so
+    the same history block comes back with different bytes each turn, mutating
+    the prefix and costing you the provider prompt cache that freeze-on-first-
+    sight exists to protect (see core.py, design decisions 1 and 2). One-shot
+    trimming is fine without it; a conversation is not. Use `barber.Cache()` in
+    a long-running process, or a plain dict in a script.
 
     Guards (lead/tail keep, deontic/PII pinning, rare-query-entity pinning,
     relevance floor) are always on. Deterministic: same input, same output.

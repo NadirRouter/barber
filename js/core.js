@@ -256,9 +256,15 @@ function selectBlock(text, query, embedFn, keepRatio, cfg, _queryEntities, stats
   const cvs = vecs.slice(0, -1);
   const sim = isDense(qv) ? cosVec : cosBag;
   const scores = cvs.map((cv) => sim(cv, qv));
+  // A *relative* floor needs something to be relative to. When no chunk shares
+  // a token with the query -- a non-Latin-script query on the lexical embedder,
+  // a block on a wholly different subject -- every score is 0 and the ranking
+  // carries no signal at all. The old `top || 1e-9` turned that into a floor of
+  // 3.5e-10 that every zero score failed, collapsing the block to lead+tail
+  // even at keep=1.0, where the caller asked to drop nothing. With no signal to
+  // discriminate on, the budget alone decides.
   let top = -Infinity;
   for (const s of scores) if (s > top) top = s;
-  top = top || 1e-9;
 
   const n = chunks.length;
   const keepN = Math.max(1, Math.min(n, pyRound(n * keepRatio)));
@@ -275,7 +281,7 @@ function selectBlock(text, query, embedFn, keepRatio, cfg, _queryEntities, stats
   }
   for (let i = 0; i < n; i++) if (pinned[i]) keep.add(i);
   // drop anything far below the top even if budget kept it
-  const floor = top * cfg.relativeFloor;
+  const floor = top > 0 ? top * cfg.relativeFloor : 0;
   const kept = new Set();
   for (const i of keep) {
     if (scores[i] >= floor || pinned[i] || i === 0 || i === n - 1) kept.add(i);
