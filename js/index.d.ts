@@ -29,6 +29,13 @@ export interface SelectionConfig {
   dropMarker: string;
   /** Roles whose large messages are selectable. */
   selectableRoles: readonly string[];
+  /**
+   * Patterns whose match makes a chunk never-droppable. The defaults are
+   * ENGLISH deontic and PII vocabulary; supply your own language's. `null`
+   * uses the defaults, `[]` disables pattern pinning entirely (rare query
+   * entities still pin).
+   */
+  pinPatterns: readonly RegExp[] | null;
 }
 
 /** Term-weight bag (Map) or dense vector (array / typed array). */

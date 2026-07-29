@@ -73,6 +73,16 @@ goes to stderr.
 - `cfg`: partial config overrides (`dropMarker`, `minMessageChars`, ...).
 - `cache`: shared decision cache for multi-turn use, see below.
 
+Relevance scoring is Unicode-aware, so any script ranks. The never-drop
+patterns are not: `cfg.pinPatterns` ships English deontic and PII vocabulary
+("must", "never", "password", ...), so give it your own for another language:
+
+```js
+trim(messages, { keep: 0.6, cfg: { pinPatterns: [
+  /(?<![\p{L}\p{N}_])(?:doit|doivent|interdit|obligatoire|jamais)(?![\p{L}\p{N}_])/iu,
+] } });
+```
+
 `makeTransform({ keep, embedder, cfg, cache })` returns a `["barber", fn]`
 pair where `fn(messages) -> [messages, changed]`, for pipeline integration.
 

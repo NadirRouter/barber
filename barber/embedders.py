@@ -14,7 +14,20 @@ import math
 import re
 from typing import Callable, Optional
 
-_TOK = re.compile(r"[a-z0-9]+")
+# Unicode-aware. `[a-z0-9]+` (what this was) tokenized "café" as "caf" and any
+# non-Latin script as nothing at all, so the zero-dependency path degraded to a
+# no-op outside English without saying so. `[^\W_]+` is \w minus underscore, so
+# ASCII behaviour is byte-identical to before while accented Latin, Cyrillic,
+# Greek, Hebrew, Arabic and Hangul now tokenize as words.
+#
+# The leading alternative gives CJK one token per character: Chinese and
+# Japanese are unspaced, so a word regex would swallow a whole sentence into one
+# token that matches nothing. Character unigrams are a weak but real overlap
+# signal there — the honest ceiling of a lexical fallback. For CJK relevance
+# that actually works, inject `sentence_transformers()` or `endpoint()`.
+# The JS port carries the same regex as `[\p{L}\p{N}]` (JS `\w` is ASCII-only
+# even under /u); the golden fixtures pin the two together.
+_TOK = re.compile(r"[぀-ヿ㐀-䶿一-鿿豈-﫿]|[^\W_]+")
 
 
 def _tokenize(s: str) -> list[str]:
@@ -26,7 +39,13 @@ def lexical(corpus_df: Optional[dict] = None) -> Callable[[list[str]], list[dict
     is injected. Returns bag-of-words idf-weighted term vectors (as dicts).
     Zero dependencies, but lexical only: it matches words, not meaning. For real
     semantic relevance (paraphrase-safe), use ``sentence_transformers()`` or
-    ``endpoint()`` — strictly better on paraphrase."""
+    ``endpoint()`` — strictly better on paraphrase.
+
+    Tokenization is Unicode-aware (see ``_TOK``), so any alphabetic script
+    scores. It is still word-overlap: CJK falls back to character unigrams, and
+    morphologically rich languages match on surface forms because there is no
+    stemmer. Pinning (``SelectionConfig.pin_patterns``) ships English patterns
+    only — set your own for another language."""
     def embed(texts: list[str]) -> list[dict]:
         # idf over the batch (the request's own chunks + query)
         df = {}
@@ -46,14 +65,21 @@ def lexical(corpus_df: Optional[dict] = None) -> Callable[[list[str]], list[dict
     return embed
 
 
-def sentence_transformers(model_name: str = "BAAI/bge-small-en-v1.5"):
+def sentence_transformers(model_name: str = "BAAI/bge-small-en-v1.5",
+                          trust_remote_code: bool = False):
     """Semantic embedder via sentence-transformers (``pip install barber-llm[semantic]``).
     Matches meaning, not words — fixes the paraphrase gold-drops the lexical
     fallback suffers. Works with any HF embedding checkpoint. Recommended:
     ``llm-semantic-router/mmbert-embed-32k-2d-matryoshka`` (32K context window,
-    matryoshka); ``BAAI/bge-small-en-v1.5`` is the lightweight alternative."""
+    matryoshka, needs ``trust_remote_code=True``); ``BAAI/bge-small-en-v1.5`` is
+    the lightweight alternative and does not.
+
+    ``trust_remote_code`` executes Python that ships with the HF repo, at load
+    time, with your process's privileges. It used to be hardcoded True here, so
+    any ``model_name`` — including one arriving from config — ran arbitrary code.
+    Opt in per model, after you have looked at the repo."""
     from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer(model_name, trust_remote_code=True)
+    model = SentenceTransformer(model_name, trust_remote_code=trust_remote_code)
     def embed(texts):
         return model.encode(list(texts), normalize_embeddings=True, show_progress_bar=False)
     return embed

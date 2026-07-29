@@ -25,7 +25,10 @@ import { lexical, tokenize } from "./embedders.js";
 
 export const DEFAULT_CONFIG = Object.freeze({
   // Only consider a message for selection if it is at least this many chars
-  // (small messages aren't retrieved-context; leave them alone).
+  // (small messages aren't retrieved-context; leave them alone). Sized for
+  // Latin script: 800 CJK characters is several thousand tokens, so a Chinese
+  // or Japanese workload wants this a few hundred lower or selection rarely
+  // fires at all.
   minMessageChars: 800,
   // Only split/select when the message has at least this many chunks.
   minChunks: 4,
@@ -43,6 +46,10 @@ export const DEFAULT_CONFIG = Object.freeze({
     "[… {n} passage(s) omitted as not relevant to this question — the remaining context is sufficient …]",
   // Roles whose large messages are selectable (never the latest user query).
   selectableRoles: Object.freeze(["user", "tool", "function"]),
+  // Patterns whose match makes a chunk never-droppable. Defaults are English
+  // (see PIN_PATTERNS); pass your own to pin another language's deontic and
+  // policy vocabulary. Empty array = pin on rare query entities only.
+  pinPatterns: null, // null -> PIN_PATTERNS
 });
 
 // Tier -> target keep ratio, for router integrations that know task
@@ -84,7 +91,11 @@ export function md5key(s) {
 // Pinning — never-drop patterns (the silent-failure guard)
 // ---------------------------------------------------------------------------
 
-const PIN_PATTERNS = [
+// ENGLISH ONLY, and unavoidably so: "must" and "ne doit pas" are not one
+// regex. These are the DEFAULT — override `config.pinPatterns` with your own
+// language's vocabulary. Nothing else here is language-locked (the tokenizer
+// is Unicode-aware), so this list is all a non-English caller has to supply.
+export const PIN_PATTERNS = [
   // deontic/safety
   /(?<![\p{L}\p{N}_])(?:must|never|do not|don't|shall not|prohibited|required|only if)(?![\p{L}\p{N}_])/iu,
   /(?<![\p{L}\p{N}_])(?:PII|HIPAA|PCI|SSN|password|secret|api[_ ]?key)(?![\p{L}\p{N}_])/iu,
@@ -93,8 +104,8 @@ const PIN_PATTERNS = [
 // so digit-pinning neuters selection. Numeric chunks that matter are kept by
 // relevance scoring; rare query entities protect the answer-bearing chunk.
 
-function isPinned(chunk, rareQueryEntities) {
-  for (const p of PIN_PATTERNS) {
+function isPinned(chunk, rareQueryEntities, patterns = PIN_PATTERNS) {
+  for (const p of patterns) {
     if (p.test(chunk)) return true;
   }
   const low = chunk.toLowerCase();
@@ -293,9 +304,11 @@ function selectBlock(text, query, embedFn, keepRatio, cfg, _queryEntities, stats
   if (typeof vecs?.then === "function") {
     // ponytail: sync-only pipeline, mirror of the sync Python API; add an
     // async trim() variant if a real async encoder integration asks for it.
-    throw new TypeError(
+    const err = new TypeError(
       "barber: async embedders are not supported yet — embed(texts) must return vectors synchronously"
     );
+    err.barberWiring = true;   // wiring bug, not a runtime failure: do not fail open
+    throw err;
   }
   const qv = vecs[vecs.length - 1];
   const cvs = vecs.slice(0, -1);
@@ -317,7 +330,7 @@ function selectBlock(text, query, embedFn, keepRatio, cfg, _queryEntities, stats
   // rank chunks; always keep pinned + (optionally) lead/tail.
   // Comparator ties resolve to original index order, same as Python's stable
   // sorted(..., reverse=True).
-  const pinned = chunks.map((c) => isPinned(c, rareQueryEntities));
+  const pinned = chunks.map((c) => isPinned(c, rareQueryEntities, cfg.pinPatterns ?? PIN_PATTERNS));
   const order = [...scores.keys()].sort((a, b) => scores[b] - scores[a]);
   const keep = new Set(order.slice(0, keepN));
   if (cfg.keepLeadTail) {
@@ -447,7 +460,7 @@ export function makeSelectionTransform({
     return "";
   };
 
-  const transform = (messages) => {
+  const selectMessages = (messages) => {
     const query = queryOf(messages);
     if (!query) return [messages, false];
     // "rare" query tokens = load-bearing entities to pin
@@ -518,6 +531,29 @@ export function makeSelectionTransform({
 
     transform.lastStats = stats;
     return [outMsgs, changedAny];
+  };
+
+  // Fail-open wrapper, matching Python's `transform` in core.py. A context
+  // optimizer must never be the reason a request dies: an injected embedder
+  // that throws should cost the trim, not the conversation. Logged, not
+  // swallowed silently — an encoder that is permanently broken and quietly
+  // saves nothing is its own kind of outage.
+  //
+  // `sweep()` deliberately does NOT fail open, in either language: it is an
+  // explicit call at a compaction point, not a pipeline hook, and a caller who
+  // asked to rewrite history should hear that it did not happen.
+  //
+  // A wiring bug (an async embedder) still throws. It is deterministic and
+  // fires on the first call, so swallowing it would hide a broken integration
+  // behind numbers that say "saved nothing" forever.
+  const transform = (messages) => {
+    try {
+      return selectMessages(messages);
+    } catch (e) {
+      if (e?.barberWiring) throw e;
+      console.warn("barber: selection failed, context passed through untrimmed", e);
+      return [messages, false];
+    }
   };
 
   transform.lastStats = newStats();

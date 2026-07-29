@@ -9,7 +9,14 @@
 // Maps, not plain objects: chunk tokens like "constructor" would otherwise
 // collide with Object.prototype.
 
-const TOK = /[a-z0-9]+/g;
+// Unicode-aware, and must stay decision-identical to Python's `_TOK`
+// (`[CJK]|[^\W_]+`). JS `\w` is ASCII-only even under /u, so the word class is
+// spelled out as \p{L}\p{N}. `[a-z0-9]+` — what this was — tokenized "café" as
+// "caf" and any non-Latin script as nothing, so the fallback silently did
+// nothing outside English. The leading alternative gives unspaced CJK one token
+// per character instead of one token per sentence; character unigrams are the
+// honest ceiling of a lexical scorer there.
+const TOK = /[぀-ヿ㐀-䶿一-鿿豈-﫿]|[\p{L}\p{N}]+/gu;
 
 export function tokenize(s) {
   return s.toLowerCase().match(TOK) ?? [];

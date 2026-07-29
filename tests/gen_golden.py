@@ -244,6 +244,35 @@ S11_CHUNKS = [
 ]
 S11_CTX = block(*S11_CHUNKS)
 
+# Non-ASCII relevance. Under the old `[a-z0-9]+` tokenizer every accented token
+# in this block was truncated ("réseau" -> "r", "seau") and the Chinese block
+# below produced no tokens at all, so both scored zero and selection collapsed
+# to lead+tail regardless of the question. These fixtures pin the Unicode
+# tokenizer's decisions across both languages — including the CJK
+# character-unigram arm, which JS spells differently (\p{L}\p{N}) and must
+# still decide identically.
+S15_CTX = block(
+    "Notes d'exploitation du réseau ferroviaire régional, rassemblées par l'équipe de maintenance après la revue trimestrielle des incidents et des retards constatés sur les lignes de banlieue.",
+    "En cas de panne de signalisation, le protocole impose un intervalle de sécurité de huit minutes entre deux convois, et la vitesse est plafonnée à quarante kilomètres par heure jusqu'à la levée de l'alerte.",
+    "La billetterie automatique accepte les cartes sans contact depuis la mise à jour de février ; les abonnements mensuels restent gérés depuis l'espace client sur le site.",
+    "Les horaires d'été entrent en vigueur début juillet et ajoutent deux départs matinaux sur la ligne côtière, financés par la subvention régionale votée l'an dernier.",
+    "Le dépôt de Villeneuve assure la révision des rames toutes les six semaines ; une rame qui dépasse ce délai est retirée du service commercial jusqu'à sa visite.",
+    "L'application mobile affiche l'affluence prévue par voiture, une donnée reconstituée à partir des capteurs de porte et non d'un comptage nominatif des voyageurs.",
+)
+
+S16_CTX = block(
+    "区域物流周报：本期覆盖港口到岸货量、承运商准点率以及两个仓库的分拣吞吐情况，供各分部经理参考。",
+    "承运商准点率本周下滑至九成一，主要原因是北部通道的暴风雪天气以及中转枢纽的装卸作业放缓。",
+    "仓库分拣吞吐保持在每日四千托盘，扫描枪固件升级之后，拣选准确率回升到百分之九十九点六。",
+    "高价值货物的保险费率将在四月续保，经纪人预计涨幅为个位数低段，因为本年度理赔记录良好。",
+    "燃油附加费下季度下调两个百分点，按标准费率结算的线路将自动适用新的附加费标准。",
+    "下期周报两周后发布，请在周四之前把更正意见发到物流频道，以便赶上排版截止时间。",
+    "口岸通关方面，本周共有十四票货物进入查验队列，其中矿产类申报编码与进口许可证不一致的情况占了大半，平均滞留时间为六天。",
+    "仓储成本按托盘天计费，超过三十天的库存将进入长期仓储费率，请各分部在月底之前清理呆滞库存并向财务提交处置申请。",
+    "车队方面，本季度新增十二辆冷藏车，全部配备温度记录仪；温控数据每十五分钟上传一次，可在调度系统的车辆详情页查询。",
+    "客户服务提醒：破损理赔需在签收后四十八小时内提交照片与运单号，超过期限的理赔申请将按承运合同的条款不予受理。",
+)
+
 # Compact markdown: headings with NO blank line before them. The blank-line
 # alternative cannot match here, so this is the shape whose `## ` markers the
 # splitter used to eat, handing the model `auth()` where the source said
@@ -452,6 +481,31 @@ SCENARIOS = [
         "messages": [
             {"role": "user", "content": S11_CTX},
             {"role": "user", "content": "מהי מדיניות ההחזרות בחנות המוזיאון?"},
+        ],
+    },
+    {
+        # French question against a French block: the accented tokens have to
+        # survive tokenization or there is no signal to rank on.
+        "name": "accented_latin_relevance",
+        "keep": 0.5,
+        "wantChanged": True,
+        "messages": [
+            {"role": "user", "content": S15_CTX},
+            {"role": "user", "content": "Quel intervalle de sécurité s'applique en cas de panne de signalisation ?"},
+        ],
+    },
+    {
+        # Chinese, unspaced: scored on character unigrams. minMessageChars is
+        # lowered because the default 800 is a Latin-sized threshold — 500
+        # Chinese characters is already a large block, so a CJK caller has to
+        # retune that gate or selection never fires (see SelectionConfig).
+        "name": "cjk_character_unigrams",
+        "keep": 0.5,
+        "cfg": {"minMessageChars": 400},
+        "wantChanged": True,
+        "messages": [
+            {"role": "user", "content": S16_CTX},
+            {"role": "user", "content": "承运商准点率为什么下滑？"},
         ],
     },
     {

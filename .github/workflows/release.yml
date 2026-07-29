@@ -16,11 +16,18 @@ name: release
 #
 # STEP ORDER IS DELIBERATE: answer "is there anything to do?" before "can we do
 # it?", and both before spending a build.
+#   0. test     - the tag's own tree is green (a JOB, see below)
 #   1. version  - already on PyPI? then there is nothing to publish; stop, green
 #   2. auth     - prove PyPI accepts this workflow's identity
 #   3. build
 #   4. contents - the wheel is what we think it is
 #   5. publish
+#
+# WHY THE TESTS RUN HERE AND NOT VIA ci.yml: `needs:` only reaches jobs in the
+# SAME workflow, and ci.yml triggers on branch pushes and PRs, never on a tag.
+# There is no cross-workflow gate to depend on, so before this job existed a tag
+# pushed onto a red main published to PyPI regardless. This is the same suite as
+# ci.yml, run against the tagged tree — the only tree that is about to ship.
 
 on:
   push:
@@ -28,7 +35,29 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install . pytest
+          pytest tests/ -q
+      - name: Golden fixtures are fresh
+        run: python tests/gen_golden.py --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: JS parity and unit tests
+        run: node --test
+        working-directory: js
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       id-token: write        # required for Trusted Publishing; nothing else is

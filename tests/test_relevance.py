@@ -105,3 +105,35 @@ def test_keep_controls_how_much_survives():
         counts.append(sum(1 for c in chunks if c in out))
     assert counts[0] < counts[1] < counts[2], (
         f"kept counts should rise with keep, got {counts}")
+
+
+def test_relevance_works_in_non_ascii_scripts():
+    """The lexical fallback ranked on `[a-z0-9]+`, so an accented or non-Latin
+    block scored zero everywhere and selection collapsed to lead+tail no matter
+    what was asked. Same fixture shape as the English one above: homogeneous
+    vocabulary, one denser gold chunk, so only ranking can keep it."""
+    cases = [
+        # French: accented tokens, the case that used to truncate ("réseau" -> "r").
+        ([f"Le paragraphe {i} du manuel décrit la procédure de remboursement "
+          f"pour la région {i}, telle qu'appliquée par l'équipe régionale {i}."
+          for i in range(10)],
+         "La procédure de remboursement accorde un remboursement sous trente "
+         "jours : le remboursement est versé sur la carte d'origine, et cette "
+         "procédure de remboursement couvre chaque demande de remboursement.",
+         "Que dit la procédure de remboursement à propos d'un remboursement ?"),
+        # Russian: Cyrillic produced no tokens at all.
+        ([f"Раздел {i} руководства описывает порядок возврата средств для "
+          f"региона {i}, как его применяет региональная группа {i}."
+          for i in range(10)],
+         "Порядок возврата средств предусматривает возврат в течение тридцати "
+         "дней: возврат зачисляется на исходную карту, и этот порядок возврата "
+         "распространяется на каждый запрос на возврат средств.",
+         "Что порядок возврата средств говорит о возврате?"),
+    ]
+    for fillers, gold, query in cases:
+        text = "\n\n".join(fillers[:5] + [gold] + fillers[5:])
+        assert len(text) >= 800
+        out = trim([{"role": "user", "content": text},
+                    {"role": "user", "content": query}], keep=0.3).messages[0]["content"]
+        assert gold in out, f"gold chunk dropped for query {query!r}"
+        assert len(out) < len(text), "nothing was trimmed"

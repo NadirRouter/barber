@@ -44,7 +44,7 @@ import hashlib, logging, re, math
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
-from .embedders import lexical as make_lexical_embedder
+from .embedders import lexical as make_lexical_embedder, _tokenize
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SelectionConfig:
     # Only consider a message for selection if it is at least this many chars
-    # (small messages aren't retrieved-context; leave them alone).
+    # (small messages aren't retrieved-context; leave them alone). Sized for
+    # Latin script: 800 CJK characters is several thousand tokens, so a Chinese
+    # or Japanese workload wants this a few hundred lower or selection rarely
+    # fires at all.
     min_message_chars: int = 800
     # Only split/select when the message has at least this many chunks.
     min_chunks: int = 4
@@ -74,6 +77,10 @@ class SelectionConfig:
     drop_marker: str = "[… {n} passage(s) omitted as not relevant to this question — the remaining context is sufficient …]"
     # Roles whose large messages are selectable (never the latest user query).
     selectable_roles: tuple = ("user", "tool", "function")
+    # Compiled patterns whose match makes a chunk never-droppable. Defaults are
+    # English (see _PIN_PATTERNS); pass your own list to pin another language's
+    # deontic/policy vocabulary. Empty list = pin on rare query entities only.
+    pin_patterns: list = field(default_factory=lambda: list(_PIN_PATTERNS))
 
 # Tier -> target keep ratio, for router integrations that know task complexity.
 # Strong models reason from less context. Tune these against your own
@@ -93,6 +100,11 @@ TIER_KEEP_RATIO = {
 # Pinning — never-drop patterns (the silent-failure guard)
 # ---------------------------------------------------------------------------
 
+# ENGLISH ONLY, and unavoidably so: "must" and "ne doit pas" are not one regex.
+# These are the DEFAULT, not the law — override `SelectionConfig.pin_patterns`
+# with your own language's deontic and policy vocabulary. Nothing else in barber
+# is language-locked (the tokenizer is Unicode-aware), so this list is the whole
+# of what a non-English caller has to supply.
 _PIN_PATTERNS = [
     re.compile(r"\b(must|never|do not|don't|shall not|prohibited|required|only if)\b", re.I),  # deontic/safety
     re.compile(r"\b(?:PII|HIPAA|PCI|SSN|password|secret|api[_ ]?key)\b", re.I),
@@ -102,8 +114,8 @@ _PIN_PATTERNS = [
 # that matter are kept by RELEVANCE scoring; safety/policy text is pinned above,
 # and RARE query entities (below) protect the answer-bearing chunk for multi-hop.
 
-def _is_pinned(chunk: str, rare_query_entities: set[str]) -> bool:
-    for p in _PIN_PATTERNS:
+def _is_pinned(chunk: str, rare_query_entities: set[str], patterns=_PIN_PATTERNS) -> bool:
+    for p in patterns:
         if p.search(chunk):
             return True
     # A query entity that is RARE across the block (appears in <=2 chunks) is a
@@ -116,10 +128,7 @@ def _is_pinned(chunk: str, rare_query_entities: set[str]) -> bool:
 # Chunking & scoring
 # ---------------------------------------------------------------------------
 
-_TOK = re.compile(r"[a-z0-9]+")
-
-def _tokenize(s: str) -> list[str]:
-    return _TOK.findall(s.lower())
+# (the tokenizer lives in embedders.py — one definition, imported above)
 
 # Line-oriented shapes an agent harness produces. Prose has blank lines between
 # paragraphs; a file read, a grep, a diff, or an ls does not, so the paragraph
@@ -339,11 +348,12 @@ def _select_block(text: str, query: str, embed_fn, keep_ratio: float,
     keep = set(order[:keep_n])
     if cfg.keep_lead_tail:
         keep.add(0); keep.add(n - 1)
+    pins = cfg.pin_patterns
     for i in range(n):
-        if _is_pinned(chunks[i], rare_query_entities):
+        if _is_pinned(chunks[i], rare_query_entities, pins):
             keep.add(i)
     # drop anything far below the top even if budget kept it
-    keep = {i for i in keep if scores[i] >= floor or _is_pinned(chunks[i], rare_query_entities) or i in (0, n-1)}
+    keep = {i for i in keep if scores[i] >= floor or _is_pinned(chunks[i], rare_query_entities, pins) or i in (0, n-1)}
 
     if len(keep) >= n:
         return text, False

@@ -11,9 +11,10 @@ itself, which cannot be wrong:
 * a byte-identical repeat of an earlier tool payload says nothing new.
 
 Nothing is judged, nothing is summarized, and every drop names the file so the
-agent can read it again. On six real Claude Code sessions (1.0M tool tokens)
-this is 15.7% of all tool tokens — about twice what selection finds in the same
-transcripts, and complementary to it.
+agent can read it again. On six real Claude Code sessions (1.16M tokens of
+transcript — the same corpus the README reports) this is 15.7% of all tool
+tokens: about twice what selection finds in the same transcripts, and
+complementary to it.
 
 WHY THIS IS A SEPARATE FUNCTION, NOT PART OF ``trim()``
 ``trim()`` never rewrites history: its freeze-on-first-sight cache exists
@@ -160,6 +161,14 @@ def sweep(messages: list, *, min_chars: int = 400,
     later, or declining to edit at all, when the arithmetic says so (see
     `_survivors`). Left as None it edits everything it finds, which is right
     only if the cache is already cold.
+
+    Unlike `trim()`, this does NOT fail open. `trim()` is a pipeline hook that
+    must never be the reason a request dies, so it logs and passes the context
+    through untrimmed. `sweep()` is an explicit call you make because you
+    decided history should be rewritten; a caller who asked for that should
+    hear that it did not happen rather than send a full transcript believing it
+    was swept. Wrap it if you disagree. The JS port keeps the same split (its
+    transform catches; there is no JS `sweep()` yet).
     """
     from . import TrimResult, _count_tokens, _token_counter
 

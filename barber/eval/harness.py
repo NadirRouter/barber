@@ -211,6 +211,12 @@ def main():
                     help="BASELINE mode: full context only, no selection. Establishes "
                          "generator accuracy + judge sanity + token counts per size "
                          "(1 gen call + 1 judge call per example — half the A/B cost).")
+    ap.add_argument("--out", metavar="PATH",
+                    help="write one JSON record per judged pair (question, both "
+                         "answers, both grades, token counts, gold recall). This "
+                         "is the artifact to commit next to a published number: "
+                         "without it, checking the README costs the reader their "
+                         "own API budget.")
     args = ap.parse_args()
     _init_clients()
 
@@ -226,7 +232,10 @@ def main():
     elif args.embedder == "st":
         try:
             st_model = os.environ.get("ST_EMBED_MODEL", "BAAI/bge-small-en-v1.5")
-            embed = embedders.sentence_transformers(st_model)
+            # The published run used mmbert, which needs remote code. Opt in
+            # explicitly — loading a model must not silently run its repo's code.
+            embed = embedders.sentence_transformers(
+                st_model, trust_remote_code=os.environ.get("ST_TRUST_REMOTE_CODE") == "1")
             print(f"[embedder: sentence-transformers {st_model} — semantic]")
         except Exception as e:
             print(f"[sentence-transformers unavailable ({e}); falling back to lexical]")
@@ -247,6 +256,9 @@ def main():
     mat_worse = 0              # blind-judge cross-check
     gold_kept = gold_tot = 0
     judged = 0
+    # Per-pair records. Written as they are produced, so a run that dies at pair
+    # 180 still leaves the 179 it paid for.
+    out_fh = open(args.out, "w", encoding="utf-8") if args.out else None
 
     if args.baseline:
         grades = {"correct": 0, "partial": 0, "incorrect": 0}
@@ -306,6 +318,25 @@ def main():
         if tok_ok and not cok:
             main._improved = getattr(main, "_improved", 0) + 1
         mat_worse += int(tw)
+
+        if out_fh:
+            json.dump({"question": q, "gold": gold,
+                       "gold_titles": sorted(gold_titles),
+                       "gold_kept": sorted(t for t in gold_titles if t in ctx_sel),
+                       "tokens_full": ntok(ctx_full), "tokens_selected": ntok(ctx_sel),
+                       "answer_full": ans_ctrl, "answer_selected": ans_treat,
+                       "grade_full": cg, "grade_selected": tg,
+                       "materially_worse": bool(tw), "judge_reason": reason,
+                       "size": args.size, "keep": args.keep,
+                       "embedder": args.embedder, "marker": args.marker,
+                       "judge_model": JUDGE_MODEL, "gen_model": GEN_MODEL},
+                      out_fh, ensure_ascii=False)
+            out_fh.write("\n")
+            out_fh.flush()
+
+    if out_fh:
+        out_fh.close()
+        print(f"[wrote {args.out}]")
 
     print("\n" + "="*60)
     if not judged or not tok_full:

@@ -74,6 +74,41 @@ On large contexts the trimmed condition scored higher than full context:
 selection removes the distractors models trip over. The entire eval, roughly
 2,000 model calls, ran on well under $20 of MiniMax credit.
 
+## Known limitations of this protocol
+
+State these before anyone else has to find them.
+
+**Generator and judge are the same model by default (MiniMax M3).** That is the
+textbook setup for self-preferencing, where a judge scores its own generations
+more kindly. Three parts of the design push against it — the judge is blind to
+which condition produced which answer, the order is randomized, and grading is
+against a known gold answer rather than a preference vote — and the metric that
+governs shipping (regression rate: control right, treatment wrong) is a
+*within-model* comparison, so a uniform self-preference bias cancels out of it.
+None of that is a substitute for the cross-check: point `GEN_MODEL` at a
+different model from `JUDGE_MODEL` and re-run before treating any number here
+as model-independent.
+
+**No run artifact is committed.** The harness is deterministic given the same
+dataset slice and models (`random.seed(13)`, per-example padding RNG derived
+from the question hash), but the model calls are not, so "deterministic" means
+the same *inputs*, not the same answers. Reproducing the table above costs you
+your own API credit. `--out PATH` writes one JSON record per judged pair —
+question, both answers, both grades, token counts, gold recall, and the model
+and setting names — which is the thing to keep or publish alongside a number.
+
+**One dataset, one language, one task shape.** HotpotQA is English multi-hop QA
+over Wikipedia paragraphs. It says nothing about code, chat logs, long tool
+output, or any non-English corpus. The pruning is script-agnostic (the
+tokenizer is Unicode-aware), but nothing here measures it outside English —
+and the pin patterns are English by default, so a non-English run should set
+`SelectionConfig.pin_patterns` first. Gate on your own traffic.
+
+**Judged pairs are filtered.** Pairs whose judge reply does not parse as JSON
+are dropped and counted (`judge_parse_dropped` in the run footer). That count
+is small in practice, but it means the denominator is judged pairs, not
+attempted pairs.
+
 ## Reproduce
 
 ```bash
@@ -85,7 +120,16 @@ barber-eval --baseline --n 25 --size small
 
 # the published large-context run
 barber-eval --n 200 --keep 0.6 --size large
+
+# same, keeping the per-pair records so the number has an artifact behind it
+barber-eval --n 200 --keep 0.6 --size large --out large-keep06.jsonl
 ```
+
+The published runs used the mmbert embedder, which ships custom code in its HF
+repo. `sentence_transformers()` defaults to `trust_remote_code=False`, so
+loading it is an explicit opt-in: `ST_TRUST_REMOTE_CODE=1`. Any other
+retrieval-trained checkpoint (`BAAI/bge-small-en-v1.5`, which tied with it)
+needs no such flag.
 
 Judge and generator are configurable via env vars, so you can point either at
 any OpenAI compatible endpoint:
@@ -99,6 +143,7 @@ any OpenAI compatible endpoint:
 | `GEN_BASE_URL` | judge base URL | generator endpoint |
 | `GEN_MODEL` | `MiniMax-M3` | generator model |
 | `ST_EMBED_MODEL` | `BAAI/bge-small-en-v1.5` | `--embedder st` model |
+| `ST_TRUST_REMOTE_CODE` | unset (off) | set to `1` to let `--embedder st` run the model repo's own code (mmbert needs it) |
 | `VLLM_EMBED_BASE_URL` | `http://localhost:8000/v1` | `--embedder vllm` endpoint |
 | `VLLM_EMBED_MODEL` | `BAAI/bge-small-en-v1.5` | `--embedder vllm` model |
 

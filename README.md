@@ -59,6 +59,12 @@ or one-shot from the shell:
 npx barber-llm --keep 0.6 < messages.json > trimmed.json
 ```
 
+The two packages version independently, so the numbers in the two badges above
+do not line up and are not meant to: PyPI runs ahead because `sweep()` and the
+eval harness are Python-only. `trim()` is the same algorithm with the same
+defaults and the same decisions on both, which is what the golden fixtures gate
+in CI.
+
 ## Quickstart
 
 Zero-dependency lexical mode, runnable as pasted:
@@ -85,14 +91,27 @@ Semantic mode, the configuration the benchmark shipped with:
 ```python
 from barber import trim, embedders
 
-embed = embedders.sentence_transformers("llm-semantic-router/mmbert-embed-32k-2d-matryoshka")
+embed = embedders.sentence_transformers(
+    "llm-semantic-router/mmbert-embed-32k-2d-matryoshka",
+    trust_remote_code=True,   # this checkpoint ships code; see below
+)
 result = trim(messages, keep=0.6, embedder=embed)
 ```
 
+`trust_remote_code` runs Python from the HF repo, at load time, in your
+process. It defaults to `False`, so passing a `model_name` through from config
+cannot execute someone else's code without you writing that flag. mmbert needs
+it; `BAAI/bge-small-en-v1.5` (which tied with it in the benchmark) does not.
+
 The lexical fallback is deterministic and dependency-free, but it matches
-words, not meaning. For production traffic use the semantic embedder above
-(32K context window) or `BAAI/bge-small-en-v1.5` as the lightweight
-alternative; the two tied on quality in the published runs. There is also
+words, not meaning. Its tokenizer is Unicode-aware, so accented Latin,
+Cyrillic, Greek, Hebrew, Arabic and Hangul all score normally; unspaced CJK
+falls back to character unigrams, which is real signal but a weak one, and
+`min_message_chars` (800) is a Latin-sized gate you will want lower for Chinese
+or Japanese. What it never does in any language is match a paraphrase. For
+production traffic use the semantic embedder above (32K context window) or
+`BAAI/bge-small-en-v1.5` as the lightweight alternative; the two tied on
+quality in the published runs. There is also
 `embedders.endpoint(base_url, model, api_key)` for any OpenAI compatible
 `/v1/embeddings` server (vLLM, TEI), which needs the `openai` package.
 
@@ -288,6 +307,16 @@ About 350 judged pairs, MiniMax M3 as the blind judge, answers graded against
 gold references, `keep=0.6`. On large contexts trimmed beat full: selection
 removes the distractors models trip over.
 
+Two things to know before you rely on that table. **The judge and the generator
+are the same model by default**, which is the classic setup for
+self-preferencing; the protocol blunts it (blind, order-randomized, graded
+against a gold answer rather than on preference) but does not eliminate it, so
+re-run with `GEN_MODEL` pointed at a different model before treating these as
+model-independent. **And these are our numbers on our run** — the harness is
+committed and seeded, the per-pair records are not, so reproducing the table
+means spending your own credit. `barber-eval --out results.jsonl` writes the
+per-pair records if you want to keep or publish yours.
+
 Full write-up: [the benchmark post](https://getnadir.com/blog/context-selection-benchmark-minimax.html).
 Full protocol: [docs/methodology.md](https://github.com/NadirRouter/barber/blob/main/docs/methodology.md). Reproduce it:
 
@@ -356,7 +385,22 @@ every guard on:
 - **Deontic and PII pinning.** Chunks with constraint language ("must",
   "never", "do not", "don't", "shall not", "prohibited", "required",
   "only if") or sensitive-data markers (PII, HIPAA, PCI, SSN, password,
-  secret, API key) are never dropped.
+  secret, API key) are never dropped. **These patterns are English.** Nothing
+  else in barber is: the tokenizer is Unicode-aware and scores any script. But
+  a French block saying *"ne doit jamais"* is not pinned unless you say so:
+
+  ```python
+  import re
+  from barber import SelectionConfig, trim
+
+  fr = SelectionConfig(pin_patterns=[
+      re.compile(r"\b(doit|doivent|ne\s+doit\s+pas|interdit|obligatoire|jamais)\b", re.I),
+      re.compile(r"\b(?:RGPD|données\s+personnelles|mot\s+de\s+passe|clé\s+API)\b", re.I),
+  ])
+  trim(messages, keep=0.6, cfg=fr)
+  ```
+
+  The JS port takes the same list as `config.pinPatterns`.
 - **Rare-query-entity pinning.** A query term that appears in only one or two
   chunks of a block is a strong "this chunk answers the question" signal.
   Those chunks are never dropped, which is what protects multi-hop questions.
