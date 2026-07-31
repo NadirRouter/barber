@@ -378,8 +378,22 @@ Those numbers were judged on RAG passages answering a question, not on tool
 output an agent is about to act on, and dropping the one grep hit the agent
 needed is a different and worse failure than dropping a passage a reader didn't
 need. The hook therefore defaults to `keep=0.8` where the library defaults to
-0.6, so out of the box it removes less than the 21.5% above, which was measured
-at 0.6. Read the four caveats at the bottom of
+0.6.
+
+That margin is close to free, which a second replay over 30 sessions from 30
+different projects (3,970 tool results, 1.57M tokens of tool output) puts a
+number on:
+
+| `keep` | fires | of eligible tokens | of all tool output |
+|---|---|---|---|
+| 0.6 | 476 | 18.3% | 10.4% |
+| 0.8 | 467 | 18.1% | 10.3% |
+
+Two tenths of a point, because `keep` is a budget cap and the relative floor is
+what does the cutting; the cap rarely binds. Note also the two denominators:
+only 56.6% of tool-output tokens clear the eligibility gates at all, so the same
+removal is "18.1% of eligible" or "10.3% of everything the tools emitted"
+depending on which you quote. Read the four caveats at the bottom of
 [contrib/claude_code_hook.py](https://github.com/NadirRouter/barber/blob/main/contrib/claude_code_hook.py)
 before running it on real work. Off again with
 `claude plugin uninstall barber@nadir`.

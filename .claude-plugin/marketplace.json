@@ -9,7 +9,7 @@
     {
       "name": "barber",
       "source": "./",
-      "description": "EXPERIMENTAL. Trims Claude Code tool output against the live question before it enters context. 21.5% of tool-output tokens removed across 12 real sessions; survivors are byte-exact. Costs no prompt-cache re-prime.",
+      "description": "EXPERIMENTAL. Trims Claude Code tool output against the live question before it enters context. 10.3% of all tool-output tokens removed at the default setting across 30 sessions; survivors are byte-exact. Costs no prompt-cache re-prime.",
       "category": "productivity",
       "tags": ["context", "tokens", "cost", "hooks"]
     }

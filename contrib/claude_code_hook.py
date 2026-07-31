@@ -20,9 +20,25 @@ a strictly better injection point than the one barber was designed for.
 Measured on 12 real sessions (3,995 tool results, 958K tokens of tool output):
 this policy fires 464 times and removes 21.5% of tool-output tokens, versus
 12.1% for token-optimizer's first-read structure map — and it keeps survivors
-byte-exact, where a structure map discards function bodies irrecoverably. That
-run used keep=0.6; this hook now defaults to 0.8, so it removes less than 21.5%
-until you turn it down (see caveat 4).
+byte-exact, where a structure map discards function bodies irrecoverably.
+
+WHAT `keep` ACTUALLY COSTS. That run used keep=0.6, and the obvious worry about
+defaulting to 0.8 is that it buys safety by giving up most of the saving. A
+second replay says it does not. Over 30 sessions from 30 different projects
+(3,970 tool results, 1.57M tokens of tool output, 799 of those results eligible
+after the TRIMMABLE/min-chars/JSON gates):
+
+    keep   fires   of eligible tokens   of all tool output   median session
+    0.6     476           18.3%                10.4%              14.7%
+    0.8     467           18.1%                10.3%              14.6%
+
+Two decimal points of difference, because `keep` is a budget cap and the
+relative floor is what actually does the cutting — the cap rarely binds. 0.8 is
+therefore close to free, which is why it is the default.
+
+Note the two denominators. Only 56.6% of tool-output tokens are eligible at
+all, so "18.1% of eligible" and "10.3% of everything the tools emitted" are the
+same removal described two ways. Quote whichever you mean, and say which.
 
 INSTALL (as a Claude Code plugin — one command, nothing to pip install)
     claude plugin marketplace add NadirRouter/barber
@@ -203,6 +219,7 @@ if __name__ == "__main__":
 #    if you can afford the latency inside a hook.
 # 4. Start with BARBER_HOOK_KEEP=0.8 on real work and tighten only if nothing
 #    breaks. Trimming a tool result is not reversible from the model's side.
-#    0.8 is what this hook now defaults to; the 21.5% headline was measured at
-#    the library default of 0.6, so expect less removal out of the box and set
-#    BARBER_HOOK_KEEP=0.6 to reproduce that number.
+#    0.8 is what this hook now defaults to, and the replay above shows that
+#    costs 0.2 points of removal against 0.6. Turning it down is not the lever
+#    it looks like; if you want materially more removed, the floor is the knob,
+#    and that is a benchmarked decision this hook does not get to make.
