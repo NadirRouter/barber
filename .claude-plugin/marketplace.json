@@ -1,6 +1,6 @@
 {
-  "name": "nadir",
-  "description": "Nadir's Claude Code plugins. Currently one: barber, which trims tool output before it enters context.",
+  "name": "barber",
+  "description": "The barber plugin: query-aware trimming of Claude Code tool output before it enters context.",
   "owner": {
     "name": "Nadir",
     "url": "https://getnadir.com"

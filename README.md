@@ -345,7 +345,7 @@ repo installs as a plugin that registers it:
 
 ```bash
 claude plugin marketplace add NadirRouter/barber
-claude plugin install barber@nadir
+claude plugin install barber@barber
 ```
 
 There is no `pip install` step and no path to edit. barber's hook import chain
@@ -396,7 +396,7 @@ removal is "18.1% of eligible" or "10.3% of everything the tools emitted"
 depending on which you quote. Read the four caveats at the bottom of
 [contrib/claude_code_hook.py](https://github.com/NadirRouter/barber/blob/main/contrib/claude_code_hook.py)
 before running it on real work. Off again with
-`claude plugin uninstall barber@nadir`.
+`claude plugin uninstall barber@barber`.
 
 It is also the one thing here that is free: the rewrite happens before the
 output enters context, so nothing cached is disturbed ([next section](#the-prompt-cache)).

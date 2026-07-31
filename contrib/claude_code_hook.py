@@ -42,7 +42,7 @@ same removal described two ways. Quote whichever you mean, and say which.
 
 INSTALL (as a Claude Code plugin — one command, nothing to pip install)
     claude plugin marketplace add NadirRouter/barber
-    claude plugin install barber@nadir
+    claude plugin install barber@barber
 The repo hosts its own single-plugin marketplace, so the install clone already
 contains the ``barber`` package this file imports; the path shim below finds it.
 ``hooks/hooks.json`` carries the PostToolUse registration, and its matcher must
