@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Assert the four version strings in this repo agree.
+"""Assert the five version strings in this repo agree.
 
-There are four, and a release that bumps only some of them ships a package
+There are five, and a release that bumps only some of them ships a package
 that lies about itself:
 
-    pyproject.toml      version =                 -> what PyPI serves
-    barber/__init__.py  __version__               -> what `barber.__version__` says
-    js/package.json     version                   -> what npm serves
-    js/index.js         export const VERSION      -> what `barber --version` prints
+    pyproject.toml            version =           -> what PyPI serves
+    barber/__init__.py        __version__         -> what `barber.__version__` says
+    .claude-plugin/plugin.json version            -> what Claude Code pins the plugin to
+    js/package.json           version             -> what npm serves
+    js/index.js               export const VERSION -> what `barber --version` prints
 
 0.4.0 went to PyPI with __version__ still reading "0.3.1" and the JS CLI still
 printing "0.2.1", because only the two manifests were bumped. 0.4.1 exists for
@@ -46,6 +47,14 @@ SOURCES = {
          lambda t: re.search(r'(?m)^version\s*=\s*"([^"]+)"', t)),
         ("barber/__init__.py", "barber/__init__.py",
          lambda t: re.search(r'(?m)^__version__\s*=\s*"([^"]+)"', t)),
+        # The plugin ships this source tree, so it carries this tree's version.
+        # Grouped with Python rather than JS because that is the tree it clones
+        # and the package whose behaviour it changes. Claude Code PINS to this
+        # string: leave it stale and installed users never receive an update,
+        # while `/plugin update` reports success. It arrived after the 0.4.0
+        # incident, as a fifth unenforced location -- enforced here instead.
+        (".claude-plugin/plugin.json", ".claude-plugin/plugin.json",
+         lambda t: re.search(r'"version"\s*:\s*"([^"]+)"', t)),
     ],
     "js": [
         ("js/package.json", "js/package.json",

@@ -78,10 +78,20 @@ def test_manifest_and_marketplace_agree_on_the_plugin_name():
 def test_plugin_version_tracks_the_package_version():
     """The plugin ships this source tree, so its version is that tree's version.
     Claude Code pins to the string in plugin.json: leave it stale and installed
-    users never receive an update, and `/plugin update` reports success."""
-    pyproject = (ROOT / "pyproject.toml").read_text()
-    version = re.search(r'(?m)^version\s*=\s*"([^"]+)"', pyproject).group(1)
-    assert json.loads(PLUGIN_JSON.read_text())["version"] == version
+    users never receive an update, and `/plugin update` reports success.
+
+    The comparison itself lives in tests/test_versions.py, which owns every
+    version literal in the repo. This asserts plugin.json is actually one of
+    the files it checks -- dropping it from that list would otherwise silently
+    retire this guarantee while both test files still passed."""
+    from test_versions import read_versions
+
+    checked = dict(read_versions()["python"])
+    assert ".claude-plugin/plugin.json" in checked, (
+        "plugin.json is no longer covered by tests/test_versions.py; the plugin "
+        "version can now go stale without any test failing"
+    )
+    assert checked[".claude-plugin/plugin.json"] == checked["pyproject.toml"]
 
 
 def test_the_hook_stays_out_of_the_wheel():
