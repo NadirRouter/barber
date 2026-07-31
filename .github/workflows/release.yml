@@ -42,11 +42,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # First, because it is the cheapest gate and the one whose failure is
+      # unrecoverable: a wheel that reports the wrong __version__ cannot be
+      # replaced, only superseded (0.4.1 exists for exactly that reason). This
+      # runs before anything is installed on purpose — it reads the tagged
+      # tree's source text, so it is unaffected by what pip put in site-packages.
+      - name: Versions agree
+        run: python tests/test_versions.py
       - name: Python tests
         run: |
           python -m pip install --upgrade pip
           pip install . pytest
           pytest tests/ -q
+      # Not a version gate: this stamps barber.__version__ into the fixture it
+      # compares against, so a stale __version__ stays green here. See the step
+      # above.
       - name: Golden fixtures are fresh
         run: python tests/gen_golden.py --check
       - uses: actions/setup-node@v4

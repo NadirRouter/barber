@@ -31,6 +31,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # Four version literals, two that manifests publish and two that the
+      # shipped code reports. 0.4.0 went out with only the manifests bumped.
+      # Named explicitly here as well as under pytest so the failure reads as
+      # "versions disagree" on the job list, not as one line of test output.
+      - name: Versions agree
+        run: python tests/test_versions.py
       - name: Build and check
         run: |
           pip install build twine
