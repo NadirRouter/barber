@@ -254,6 +254,56 @@ session does: the spread across those six sessions was 1.18x to 1.68x, and the
 sessions that gain most are the ones that rewrite the same files repeatedly.
 `sweep()` is Python-only for now; the JS port has the `trim()` half.
 
+## Claude Code plugin
+
+`trim()` and `sweep()` act on a conversation you already own. Inside Claude Code
+you do not own it, so the same work happens in a `PostToolUse` hook, and this
+repo installs as a plugin that registers it:
+
+```bash
+claude plugin marketplace add NadirRouter/barber
+claude plugin install barber@nadir
+```
+
+There is no `pip install` step and no path to edit. barber's hook import chain
+(`barber.core` plus the lexical embedder) touches nothing outside the standard
+library, and a plugin install is a clone of this repo with `barber/` already in
+it, so the hook resolves the package next to itself. An installed `barber-llm`
+still wins if you have one.
+
+The hook trims `Read`, `Grep`, `Glob`, `Bash`, `BashOutput`, `NotebookRead`,
+`WebFetch` and `WebSearch` results against the live question plus that call's own
+arguments — the grep pattern or file path is usually the sharper signal. It
+leaves `Edit`, `Write`, `TodoWrite` and `Task` alone, along with anything under
+800 characters, any non-string result, and any body starting `{` or `[`, because
+half a JSON object does not parse. Measured on 12 real sessions (3,995 tool
+results, 958K tokens of tool output) the policy fires 464 times and removes 21.5%
+of tool-output tokens, versus 12.1% for token-optimizer's first-read structure
+map, and survivors stay byte-exact where a structure map discards function
+bodies irrecoverably.
+
+Three env vars, no settings file involved:
+
+| | |
+|---|---|
+| `BARBER_HOOK_KEEP=0.8` | fraction of chunks kept |
+| `BARBER_HOOK_MIN_CHARS=800` | leave anything smaller alone |
+| `BARBER_HOOK_DISABLE=1` | off for this shell |
+
+**This is experimental and [the benchmark](#the-benchmark) does not cover it.**
+Those numbers were judged on RAG passages answering a question, not on tool
+output an agent is about to act on, and dropping the one grep hit the agent
+needed is a different and worse failure than dropping a passage a reader didn't
+need. The hook therefore defaults to `keep=0.8` where the library defaults to
+0.6, so out of the box it removes less than the 21.5% above, which was measured
+at 0.6. Read the four caveats at the bottom of
+[contrib/claude_code_hook.py](https://github.com/NadirRouter/barber/blob/main/contrib/claude_code_hook.py)
+before running it on real work. Off again with
+`claude plugin uninstall barber@nadir`.
+
+It is also the one thing here that is free: the rewrite happens before the
+output enters context, so nothing cached is disturbed ([next section](#the-prompt-cache)).
+
 ## The prompt cache
 
 Providers bill a cached token at a fraction of a fresh one — Anthropic reads at
