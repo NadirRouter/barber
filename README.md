@@ -43,6 +43,8 @@ dependencies. Extras when you want them:
 | `barber-llm[semantic]` | `sentence-transformers` | semantic scoring, paraphrase-safe |
 | `barber-llm[tokens]` | `tiktoken` | exact token counts in `TrimResult` |
 | `barber-llm[eval]` | `datasets`, `openai`, `tiktoken` | the `barber-eval` benchmark harness |
+| `barber-llm[langchain]` | `langchain-core` | a `BaseDocumentCompressor` for `ContextualCompressionRetriever` |
+| `barber-llm[llamaindex]` | `llama-index-core` | a `BaseNodePostprocessor` for a query engine |
 
 JavaScript is a first-class citizen too. The [npm package](https://www.npmjs.com/package/barber-llm)
 is a zero-dependency port of the same algorithm with the same defaults, kept
@@ -168,6 +170,87 @@ messages = [{"role": "user", "content": docs},
 Most APIs accept consecutive user messages. If yours does not, put the context
 in a `tool` or `function` message, which is where retrieved context usually
 arrives anyway.
+
+## LangChain and LlamaIndex
+
+A retriever post-processor gets a query and N candidate documents and returns a
+subset. That is the same job the benchmark below measured — query plus candidate
+passages, keep what answers the question — so it is the one framework slot where
+those numbers describe the work being done rather than something adjacent to it.
+
+```bash
+pip install "barber-llm[langchain]"
+```
+
+```python
+from langchain_classic.retrievers import ContextualCompressionRetriever
+from barber.integrations.langchain import BarberDocumentCompressor
+
+retriever = ContextualCompressionRetriever(
+    base_compressor=BarberDocumentCompressor(keep=0.6),
+    base_retriever=vectorstore.as_retriever(search_kwargs={"k": 20}),
+)
+docs = retriever.invoke("What is the refund policy?")
+```
+
+`BarberDocumentCompressor` subclasses `langchain_core.documents.compressor.BaseDocumentCompressor`,
+so it drops into any slot that takes one, including `DocumentCompressorPipeline`.
+`acompress_documents` is inherited: the base class runs the sync path in an
+executor, which is what you want for CPU work with no I/O to await.
+`ContextualCompressionRetriever` lives in `langchain_classic.retrievers` on
+LangChain 1.x and `langchain.retrievers` on 0.x; the compressor itself only
+imports `langchain_core`, which both share (tested from `langchain-core` 0.3.0).
+
+The incumbent in that slot, `LLMChainExtractor`, invokes its chain once per
+retrieved document, sequentially — 20 LLM calls for a `k=20` retrieval, on every
+query. barber makes none: scoring is one embedding pass, or pure lexical math
+with no dependencies at all.
+
+LlamaIndex is the same shape:
+
+```bash
+pip install "barber-llm[llamaindex]"
+```
+
+```python
+from barber.integrations.llama_index import BarberNodePostprocessor
+
+engine = index.as_query_engine(
+    similarity_top_k=20,
+    node_postprocessors=[BarberNodePostprocessor(keep=0.6)],
+)
+```
+
+`BarberNodePostprocessor` subclasses `BaseNodePostprocessor` and inherits
+`apostprocess_nodes`, which the base class runs on a thread. That method arrived
+in `llama-index-core` 0.13, which is where the extra floors; the sync path alone
+works from 0.11.
+
+Both take `keep`, an `embedder`, and a `SelectionConfig`, and both retrieve
+wide-then-cut: `k=3` leaves nothing to select between, and barber will say so by
+returning all three. Four things to know before wiring either one in:
+
+- **It filters, it does not extract.** A kept document comes back as the object
+  that went in — same text, same metadata, same order, no relevance score
+  written. Nothing is rewritten, so citations and source links downstream still
+  resolve. The flip side is that a long document that is half relevant comes
+  back whole; trimming *inside* a document is `trim()` on a message list.
+- **barber's gates still apply.** Under 4 documents, or under 800 characters
+  across all of them, there is nothing worth cutting and the list comes back
+  untouched ([the full table](#when-barber-does-nothing)).
+- **`keep` is a budget, not a quota.** Pinning and lead/tail keep documents
+  above it; the relevance floor cuts below it. On a candidate set where only one
+  or two documents share vocabulary with the query — the normal case for the
+  zero-dependency lexical fallback, which matches words and not meaning — the
+  floor is what decides and `keep` barely shows up. Pass the same encoder you
+  retrieve with, via `embedders.sentence_transformers()` or
+  `embedders.endpoint()`, and the decision becomes semantic.
+- **The published numbers are not a benchmark of these adapters.** [The table
+  below](#the-benchmark) is HotpotQA passages, LLM-judged, run through
+  `trim()`. The adapters map a document set onto that same call — one document,
+  one chunk, the block shape the harness builds — but nobody has run the eval
+  through `ContextualCompressionRetriever` on your corpus. `barber-eval` is
+  committed if you want your own number.
 
 ## Coding agents
 
