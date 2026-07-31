@@ -29,6 +29,10 @@ dependencies = []
 semantic = ["sentence-transformers"]
 eval = ["datasets", "openai", "tiktoken"]
 tokens = ["tiktoken"]
+# Framework adapters (barber/integrations/). Nothing in `barber` imports these;
+# the floors are the oldest releases the adapters were tested against.
+langchain = ["langchain-core>=0.3"]
+llamaindex = ["llama-index-core>=0.13"]
 
 [project.urls]
 Homepage = "https://getnadir.com"
