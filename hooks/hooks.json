@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|BashOutput|Glob|Grep|NotebookRead|Read|WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/contrib/claude_code_hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}

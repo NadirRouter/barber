@@ -56,6 +56,25 @@ def test_fail_open_on_garbage_input():
     assert p.returncode == 0 and p.stdout == ""
 
 
+def test_works_with_barber_installed_nowhere_at_all(tmp_path):
+    """The whole claim of the plugin install: no pip step. `-E -S` removes
+    PYTHONPATH and site-packages, so nothing can supply barber except the hook's
+    own sys.path shim resolving <this file>/../ — which in a plugin install is
+    the clone Claude Code made, package included. cwd is elsewhere so a stray
+    relative path cannot rescue it either.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    p = subprocess.run([sys.executable, "-E", "-S", str(HOOK)],
+                       capture_output=True, text=True, env=env, cwd=str(tmp_path),
+                       input=json.dumps({"tool_name": "Grep",
+                                         "tool_input": {"pattern": "refresh_token"},
+                                         "tool_response": GREP_HITS}))
+    assert p.returncode == 0, p.stderr
+    assert "cannot import barber" not in p.stderr, p.stderr
+    new = json.loads(p.stdout)["hookSpecificOutput"]["updatedToolOutput"]
+    assert len(new) < len(GREP_HITS) and "refresh_token" in new
+
+
 def test_missing_barber_says_so_instead_of_going_quiet(tmp_path):
     """A hook that silently does nothing because the import failed looks exactly
     like one that is working and finding no savings.
@@ -64,6 +83,10 @@ def test_missing_barber_says_so_instead_of_going_quiet(tmp_path):
     PYTHONPATH, not by pointing PYTHONPATH somewhere empty: CI installs barber
     into site-packages (`pip install .`), so an empty path proves nothing there
     and the test passed only on a machine where barber happened to be missing.
+
+    It is also why the hook's sys.path shim APPENDS the repo root instead of
+    prepending it: PYTHONPATH still wins, so a barber that is present and broken
+    is still reported rather than masked by the copy sitting next to the hook.
     """
     stub = tmp_path / "barber"
     stub.mkdir()
