@@ -1,8 +1,19 @@
 name: release
 
+# HUMAN-READABLE VERSION OF ALL OF THIS: ../../RELEASING.md, which also carries
+# the manual-upload procedure this workflow is meant to replace and the reason
+# a green run here does not prove publishing works (see step 1 below). Keep the
+# two in sync; the checklist a releaser actually reads is the one in Markdown.
+#
 # Publish to PyPI with Trusted Publishing (OIDC). No API token exists anywhere:
 # GitHub proves the workflow's identity to PyPI directly, so there is no secret
 # to store on a laptop, paste into a chat, leak in a log, or rotate afterwards.
+#
+# STATUS: NOT DONE. The trusted publisher has never been registered, so the
+# publish job below has never actually uploaded anything and every release so
+# far went up by hand. Until the setup below happens, follow the manual-upload
+# procedure in RELEASING.md — it includes the contrib-in-the-wheel check that a
+# hand upload skips.
 #
 # ONE-TIME SETUP, on PyPI (nobody can do this for you, it is an account action):
 #   https://pypi.org/manage/project/barber-llm/settings/publishing/
@@ -22,6 +33,13 @@ name: release
 #   3. build
 #   4. contents - the wheel is what we think it is
 #   5. publish
+#
+# THE COST OF THAT ORDER, AND IT IS REAL: step 1 exits green on a version that
+# is already on PyPI, and everything after it — INCLUDING step 2 — is skipped.
+# So a green run of this workflow is not evidence that publishing works; it is
+# usually evidence that there was nothing to publish. Only a run on a version
+# genuinely not yet on PyPI exercises the auth step. Do not read a re-run of an
+# old tag as a successful configuration test.
 #
 # WHY THE TESTS RUN HERE AND NOT VIA ci.yml: `needs:` only reaches jobs in the
 # SAME workflow, and ci.yml triggers on branch pushes and PRs, never on a tag.
