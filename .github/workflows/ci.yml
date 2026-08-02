@@ -31,6 +31,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # Four version literals, two that manifests publish and two that the
+      # shipped code reports. 0.4.0 went out with only the manifests bumped.
+      # Named explicitly here as well as under pytest so the failure reads as
+      # "versions disagree" on the job list, not as one line of test output.
+      - name: Versions agree
+        run: python tests/test_versions.py
       - name: Build and check
         run: |
           pip install build twine
@@ -58,3 +64,22 @@ jobs:
       - name: JS parity and unit tests
         run: node --test
         working-directory: js
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # `plugin validate` is a local schema check on files in the checkout: it
+      # reads no credentials and makes no API call, so it runs on a bare runner.
+      # Two invocations because it validates one manifest per call and picks the
+      # marketplace when both live at the path given. The plugin.json call is the
+      # one that also checks hooks/hooks.json. --strict fails on the warnings the
+      # runtime tolerates, which is exactly the class that ships a silent no-op.
+      - name: Plugin and marketplace manifests are valid
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate .claude-plugin/plugin.json --strict
+          claude plugin validate . --strict

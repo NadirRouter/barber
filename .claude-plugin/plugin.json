@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "barber",
+  "description": "EXPERIMENTAL. Query-aware trimming of tool output before it enters context, via a PostToolUse hook. At its default setting it removed 10.3% of all tool-output tokens (18.1% of the subset it is eligible to touch) across 30 sessions from 30 projects. Not covered by barber's published retention benchmark; read the caveats in contrib/claude_code_hook.py first.",
+  "version": "0.4.1",
+  "author": {
+    "name": "Nadir",
+    "url": "https://getnadir.com"
+  },
+  "homepage": "https://getnadir.com",
+  "repository": "https://github.com/NadirRouter/barber",
+  "license": "MIT",
+  "keywords": ["context", "tokens", "cost", "prompt-cache", "tool-output"]
+}

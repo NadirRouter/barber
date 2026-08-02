@@ -43,6 +43,8 @@ dependencies. Extras when you want them:
 | `barber-llm[semantic]` | `sentence-transformers` | semantic scoring, paraphrase-safe |
 | `barber-llm[tokens]` | `tiktoken` | exact token counts in `TrimResult` |
 | `barber-llm[eval]` | `datasets`, `openai`, `tiktoken` | the `barber-eval` benchmark harness |
+| `barber-llm[langchain]` | `langchain-core` | a `BaseDocumentCompressor` for `ContextualCompressionRetriever` |
+| `barber-llm[llamaindex]` | `llama-index-core` | a `BaseNodePostprocessor` for a query engine |
 
 JavaScript is a first-class citizen too. The [npm package](https://www.npmjs.com/package/barber-llm)
 is a zero-dependency port of the same algorithm with the same defaults, kept
@@ -169,6 +171,87 @@ Most APIs accept consecutive user messages. If yours does not, put the context
 in a `tool` or `function` message, which is where retrieved context usually
 arrives anyway.
 
+## LangChain and LlamaIndex
+
+A retriever post-processor gets a query and N candidate documents and returns a
+subset. That is the same job the benchmark below measured — query plus candidate
+passages, keep what answers the question — so it is the one framework slot where
+those numbers describe the work being done rather than something adjacent to it.
+
+```bash
+pip install "barber-llm[langchain]"
+```
+
+```python
+from langchain_classic.retrievers import ContextualCompressionRetriever
+from barber.integrations.langchain import BarberDocumentCompressor
+
+retriever = ContextualCompressionRetriever(
+    base_compressor=BarberDocumentCompressor(keep=0.6),
+    base_retriever=vectorstore.as_retriever(search_kwargs={"k": 20}),
+)
+docs = retriever.invoke("What is the refund policy?")
+```
+
+`BarberDocumentCompressor` subclasses `langchain_core.documents.compressor.BaseDocumentCompressor`,
+so it drops into any slot that takes one, including `DocumentCompressorPipeline`.
+`acompress_documents` is inherited: the base class runs the sync path in an
+executor, which is what you want for CPU work with no I/O to await.
+`ContextualCompressionRetriever` lives in `langchain_classic.retrievers` on
+LangChain 1.x and `langchain.retrievers` on 0.x; the compressor itself only
+imports `langchain_core`, which both share (tested from `langchain-core` 0.3.0).
+
+The incumbent in that slot, `LLMChainExtractor`, invokes its chain once per
+retrieved document, sequentially — 20 LLM calls for a `k=20` retrieval, on every
+query. barber makes none: scoring is one embedding pass, or pure lexical math
+with no dependencies at all.
+
+LlamaIndex is the same shape:
+
+```bash
+pip install "barber-llm[llamaindex]"
+```
+
+```python
+from barber.integrations.llama_index import BarberNodePostprocessor
+
+engine = index.as_query_engine(
+    similarity_top_k=20,
+    node_postprocessors=[BarberNodePostprocessor(keep=0.6)],
+)
+```
+
+`BarberNodePostprocessor` subclasses `BaseNodePostprocessor` and inherits
+`apostprocess_nodes`, which the base class runs on a thread. That method arrived
+in `llama-index-core` 0.13, which is where the extra floors; the sync path alone
+works from 0.11.
+
+Both take `keep`, an `embedder`, and a `SelectionConfig`, and both retrieve
+wide-then-cut: `k=3` leaves nothing to select between, and barber will say so by
+returning all three. Four things to know before wiring either one in:
+
+- **It filters, it does not extract.** A kept document comes back as the object
+  that went in — same text, same metadata, same order, no relevance score
+  written. Nothing is rewritten, so citations and source links downstream still
+  resolve. The flip side is that a long document that is half relevant comes
+  back whole; trimming *inside* a document is `trim()` on a message list.
+- **barber's gates still apply.** Under 4 documents, or under 800 characters
+  across all of them, there is nothing worth cutting and the list comes back
+  untouched ([the full table](#when-barber-does-nothing)).
+- **`keep` is a budget, not a quota.** Pinning and lead/tail keep documents
+  above it; the relevance floor cuts below it. On a candidate set where only one
+  or two documents share vocabulary with the query — the normal case for the
+  zero-dependency lexical fallback, which matches words and not meaning — the
+  floor is what decides and `keep` barely shows up. Pass the same encoder you
+  retrieve with, via `embedders.sentence_transformers()` or
+  `embedders.endpoint()`, and the decision becomes semantic.
+- **The published numbers are not a benchmark of these adapters.** [The table
+  below](#the-benchmark) is HotpotQA passages, LLM-judged, run through
+  `trim()`. The adapters map a document set onto that same call — one document,
+  one chunk, the block shape the harness builds — but nobody has run the eval
+  through `ContextualCompressionRetriever` on your corpus. `barber-eval` is
+  committed if you want your own number.
+
 ## Coding agents
 
 A coding-agent transcript is not a RAG block, and two of its habits defeat
@@ -253,6 +336,70 @@ That is 1.31x the turns per unit of quota. Your mileage varies with what your
 session does: the spread across those six sessions was 1.18x to 1.68x, and the
 sessions that gain most are the ones that rewrite the same files repeatedly.
 `sweep()` is Python-only for now; the JS port has the `trim()` half.
+
+## Claude Code plugin
+
+`trim()` and `sweep()` act on a conversation you already own. Inside Claude Code
+you do not own it, so the same work happens in a `PostToolUse` hook, and this
+repo installs as a plugin that registers it:
+
+```bash
+claude plugin marketplace add NadirRouter/barber
+claude plugin install barber@barber
+```
+
+There is no `pip install` step and no path to edit. barber's hook import chain
+(`barber.core` plus the lexical embedder) touches nothing outside the standard
+library, and a plugin install is a clone of this repo with `barber/` already in
+it, so the hook resolves the package next to itself. An installed `barber-llm`
+still wins if you have one.
+
+The hook trims `Read`, `Grep`, `Glob`, `Bash`, `BashOutput`, `NotebookRead`,
+`WebFetch` and `WebSearch` results against the live question plus that call's own
+arguments — the grep pattern or file path is usually the sharper signal. It
+leaves `Edit`, `Write`, `TodoWrite` and `Task` alone, along with anything under
+800 characters, any non-string result, and any body starting `{` or `[`, because
+half a JSON object does not parse. Measured on 12 real sessions (3,995 tool
+results, 958K tokens of tool output) the policy fires 464 times and removes 21.5%
+of tool-output tokens, versus 12.1% for token-optimizer's first-read structure
+map, and survivors stay byte-exact where a structure map discards function
+bodies irrecoverably.
+
+Three env vars, no settings file involved:
+
+| | |
+|---|---|
+| `BARBER_HOOK_KEEP=0.8` | fraction of chunks kept |
+| `BARBER_HOOK_MIN_CHARS=800` | leave anything smaller alone |
+| `BARBER_HOOK_DISABLE=1` | off for this shell |
+
+**This is experimental and [the benchmark](#the-benchmark) does not cover it.**
+Those numbers were judged on RAG passages answering a question, not on tool
+output an agent is about to act on, and dropping the one grep hit the agent
+needed is a different and worse failure than dropping a passage a reader didn't
+need. The hook therefore defaults to `keep=0.8` where the library defaults to
+0.6.
+
+That margin is close to free, which a second replay over 30 sessions from 30
+different projects (3,970 tool results, 1.57M tokens of tool output) puts a
+number on:
+
+| `keep` | fires | of eligible tokens | of all tool output |
+|---|---|---|---|
+| 0.6 | 476 | 18.3% | 10.4% |
+| 0.8 | 467 | 18.1% | 10.3% |
+
+Two tenths of a point, because `keep` is a budget cap and the relative floor is
+what does the cutting; the cap rarely binds. Note also the two denominators:
+only 56.6% of tool-output tokens clear the eligibility gates at all, so the same
+removal is "18.1% of eligible" or "10.3% of everything the tools emitted"
+depending on which you quote. Read the four caveats at the bottom of
+[contrib/claude_code_hook.py](https://github.com/NadirRouter/barber/blob/main/contrib/claude_code_hook.py)
+before running it on real work. Off again with
+`claude plugin uninstall barber@barber`.
+
+It is also the one thing here that is free: the rewrite happens before the
+output enters context, so nothing cached is disturbed ([next section](#the-prompt-cache)).
 
 ## The prompt cache
 

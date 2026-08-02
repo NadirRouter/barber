@@ -1,8 +1,19 @@
 name: release
 
+# HUMAN-READABLE VERSION OF ALL OF THIS: ../../RELEASING.md, which also carries
+# the manual-upload procedure this workflow is meant to replace and the reason
+# a green run here does not prove publishing works (see step 1 below). Keep the
+# two in sync; the checklist a releaser actually reads is the one in Markdown.
+#
 # Publish to PyPI with Trusted Publishing (OIDC). No API token exists anywhere:
 # GitHub proves the workflow's identity to PyPI directly, so there is no secret
 # to store on a laptop, paste into a chat, leak in a log, or rotate afterwards.
+#
+# STATUS: NOT DONE. The trusted publisher has never been registered, so the
+# publish job below has never actually uploaded anything and every release so
+# far went up by hand. Until the setup below happens, follow the manual-upload
+# procedure in RELEASING.md — it includes the contrib-in-the-wheel check that a
+# hand upload skips.
 #
 # ONE-TIME SETUP, on PyPI (nobody can do this for you, it is an account action):
 #   https://pypi.org/manage/project/barber-llm/settings/publishing/
@@ -23,6 +34,13 @@ name: release
 #   4. contents - the wheel is what we think it is
 #   5. publish
 #
+# THE COST OF THAT ORDER, AND IT IS REAL: step 1 exits green on a version that
+# is already on PyPI, and everything after it — INCLUDING step 2 — is skipped.
+# So a green run of this workflow is not evidence that publishing works; it is
+# usually evidence that there was nothing to publish. Only a run on a version
+# genuinely not yet on PyPI exercises the auth step. Do not read a re-run of an
+# old tag as a successful configuration test.
+#
 # WHY THE TESTS RUN HERE AND NOT VIA ci.yml: `needs:` only reaches jobs in the
 # SAME workflow, and ci.yml triggers on branch pushes and PRs, never on a tag.
 # There is no cross-workflow gate to depend on, so before this job existed a tag
@@ -42,11 +60,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # First, because it is the cheapest gate and the one whose failure is
+      # unrecoverable: a wheel that reports the wrong __version__ cannot be
+      # replaced, only superseded (0.4.1 exists for exactly that reason). This
+      # runs before anything is installed on purpose — it reads the tagged
+      # tree's source text, so it is unaffected by what pip put in site-packages.
+      - name: Versions agree
+        run: python tests/test_versions.py
       - name: Python tests
         run: |
           python -m pip install --upgrade pip
           pip install . pytest
           pytest tests/ -q
+      # Not a version gate: this stamps barber.__version__ into the fixture it
+      # compares against, so a stale __version__ stays green here. See the step
+      # above.
       - name: Golden fixtures are fresh
         run: python tests/gen_golden.py --check
       - uses: actions/setup-node@v4

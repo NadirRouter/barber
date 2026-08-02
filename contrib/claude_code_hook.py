@@ -22,13 +22,42 @@ this policy fires 464 times and removes 21.5% of tool-output tokens, versus
 12.1% for token-optimizer's first-read structure map — and it keeps survivors
 byte-exact, where a structure map discards function bodies irrecoverably.
 
-INSTALL (settings.json)
+WHAT `keep` ACTUALLY COSTS. That run used keep=0.6, and the obvious worry about
+defaulting to 0.8 is that it buys safety by giving up most of the saving. A
+second replay says it does not. Over 30 sessions from 30 different projects
+(3,970 tool results, 1.57M tokens of tool output, 799 of those results eligible
+after the TRIMMABLE/min-chars/JSON gates):
+
+    keep   fires   of eligible tokens   of all tool output   median session
+    0.6     476           18.3%                10.4%              14.7%
+    0.8     467           18.1%                10.3%              14.6%
+
+Two decimal points of difference, because `keep` is a budget cap and the
+relative floor is what actually does the cutting — the cap rarely binds. 0.8 is
+therefore close to free, which is why it is the default.
+
+Note the two denominators. Only 56.6% of tool-output tokens are eligible at
+all, so "18.1% of eligible" and "10.3% of everything the tools emitted" are the
+same removal described two ways. Quote whichever you mean, and say which.
+
+INSTALL (as a Claude Code plugin — one command, nothing to pip install)
+    claude plugin marketplace add NadirRouter/barber
+    claude plugin install barber@barber
+The repo hosts its own single-plugin marketplace, so the install clone already
+contains the ``barber`` package this file imports; the path shim below finds it.
+``hooks/hooks.json`` carries the PostToolUse registration, and its matcher must
+stay in sync with ``TRIMMABLE`` below — tests/test_plugin.py enforces that.
+
+INSTALL (by hand, settings.json — for a source checkout or a pinned interpreter)
     {"hooks": {"PostToolUse": [{"matcher": "Read|Grep|Glob|Bash|WebFetch",
       "hooks": [{"type": "command",
                  "command": "python3 /path/to/contrib/claude_code_hook.py"}]}]}}
 
 TUNING
-    BARBER_HOOK_KEEP=0.6     fraction of chunks retained (barber's default)
+    BARBER_HOOK_KEEP=0.8     fraction of chunks retained (caveat 4 below; the
+                             library's own default is 0.6, deliberately not
+                             inherited here because a dropped tool result is
+                             not recoverable from the model's side)
     BARBER_HOOK_MIN_CHARS=800  don't touch anything smaller
     BARBER_HOOK_DISABLE=1    off without editing settings
 """
@@ -38,10 +67,24 @@ import json
 import os
 import sys
 
+# Make ``import barber`` work with nothing installed. This file lives at
+# <root>/contrib/, and <root> holds the barber package — true in a source
+# checkout and equally true in a plugin install, which is a clone of this repo.
+# Resolved from __file__ rather than ${CLAUDE_PLUGIN_ROOT} so both cases work
+# and neither depends on the environment the hook is spawned with.
+# APPENDED, not prepended: an explicitly installed barber keeps winning, so this
+# is only ever the fallback, and a broken install still reports itself below
+# instead of being silently masked by the copy sitting next to this file.
+_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if os.path.isdir(os.path.join(_ROOT, "barber")) and _ROOT not in sys.path:
+    sys.path.append(_ROOT)
+
 # Tools whose output is prose/listing the model reads, not a value it parses.
 # Deliberately excludes Edit/Write/TodoWrite/Task: their results are short
 # status payloads or structured objects, and trimming them buys nothing while
 # risking a shape mismatch.
+# Duplicated as the `matcher` regex in hooks/hooks.json, which decides whether
+# this process is spawned at all; tests/test_plugin.py fails if the two drift.
 TRIMMABLE = {"Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch",
              "NotebookRead", "BashOutput"}
 
@@ -135,7 +178,10 @@ def main() -> int:
         return 0
 
     try:
-        keep = float(os.environ.get("BARBER_HOOK_KEEP", "0.6"))
+        # 0.8, not the library's 0.6: caveat 4 below is this file's own advice
+        # and the default should not contradict it. Tool output is acted on,
+        # not read, and the agent cannot ask for the dropped lines back.
+        keep = float(os.environ.get("BARBER_HOOK_KEEP", "0.8"))
         cfg = SelectionConfig(min_message_chars=min_chars)
         query = _question_and_args(payload)
         if not query.strip():
@@ -173,3 +219,7 @@ if __name__ == "__main__":
 #    if you can afford the latency inside a hook.
 # 4. Start with BARBER_HOOK_KEEP=0.8 on real work and tighten only if nothing
 #    breaks. Trimming a tool result is not reversible from the model's side.
+#    0.8 is what this hook now defaults to, and the replay above shows that
+#    costs 0.2 points of removal against 0.6. Turning it down is not the lever
+#    it looks like; if you want materially more removed, the floor is the knob,
+#    and that is a benchmarked decision this hook does not get to make.

@@ -29,6 +29,10 @@ dependencies = []
 semantic = ["sentence-transformers"]
 eval = ["datasets", "openai", "tiktoken"]
 tokens = ["tiktoken"]
+# Framework adapters (barber/integrations/). Nothing in `barber` imports these;
+# the floors are the oldest releases the adapters were tested against.
+langchain = ["langchain-core>=0.3"]
+llamaindex = ["llama-index-core>=0.13"]
 
 [project.urls]
 Homepage = "https://getnadir.com"
@@ -44,7 +48,9 @@ packages = ["barber"]
 # Leading slashes are load-bearing: hatchling matches these gitignore-style, so
 # an unanchored "README.md" / "LICENSE" also matched js/README.md and js/LICENSE
 # and shipped two orphan files from a JS port the sdist otherwise excludes.
-# `contrib` is here so tests/test_hook.py has the hook it tests -- the wheel is
-# governed separately by packages = ["barber"], so contrib still never reaches
-# an installed environment.
-include = ["barber", "contrib", "tests", "docs", "/README.md", "/LICENSE", "/pyproject.toml"]
+# `contrib` is here so tests/test_hook.py has the hook it tests, and
+# `/hooks` + `/.claude-plugin` so tests/test_plugin.py has the manifests it
+# pins -- the wheel is governed separately by packages = ["barber"], so none of
+# them ever reaches an installed environment.
+include = ["barber", "contrib", "tests", "docs", "/hooks", "/.claude-plugin",
+           "/README.md", "/LICENSE", "/pyproject.toml"]
