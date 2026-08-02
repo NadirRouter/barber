@@ -152,7 +152,11 @@ def main():
     # usage: replay_hook.py [sessions] [transcript-root]
     root = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser(
         "~/.claude/projects")
-    files = glob.glob(os.path.join(root, "*", "*.jsonl"))
+    if os.path.isfile(root):                 # one named transcript: /barber:stats
+        files = [root]
+    else:
+        files = (glob.glob(os.path.join(root, "*", "*.jsonl"))
+                 or glob.glob(os.path.join(root, "*.jsonl")))
     if not files:
         sys.exit(f"no transcripts under {root}")
     files.sort(key=lambda p: -os.path.getsize(p))
