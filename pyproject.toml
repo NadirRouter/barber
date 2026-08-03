@@ -40,6 +40,7 @@ Source = "https://github.com/NadirRouter/barber"
 
 [project.scripts]
 barber-eval = "barber.eval.harness:main"
+barber-mcp = "barber.mcp:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["barber"]

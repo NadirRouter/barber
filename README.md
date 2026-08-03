@@ -401,6 +401,30 @@ before running it on real work. Off again with
 It is also the one thing here that is free: the rewrite happens before the
 output enters context, so nothing cached is disturbed ([next section](#the-prompt-cache)).
 
+## MCP server
+
+The hook above only works in Claude Code, because it needs a point that
+rewrites tool output before the model sees it and Claude Code is currently the
+only agent that honours one. MCP is the portable shape. After
+`pip install barber-llm`:
+
+```json
+{"mcpServers": {"barber": {"command": "barber-mcp"}}}
+```
+
+One tool, `trim(text, query, keep?)`, which drops the parts of a block that are
+irrelevant to the question and returns the rest byte-for-byte. It is the
+benchmarked path rather than the experimental one: a question and some
+candidate passages is exactly the shape [the benchmark](#the-benchmark) judged.
+
+The server speaks JSON-RPC over stdio directly instead of taking the `mcp` SDK,
+which would pull pydantic, anyio and httpx into a package whose whole premise is
+having no dependencies. `pip install barber-llm` still installs barber and
+nothing else.
+
+Unlike the hook, this one is pull rather than push: the agent decides when to
+call it, so it trims what you point it at instead of everything that goes past.
+
 ## The prompt cache
 
 Providers bill a cached token at a fraction of a fresh one — Anthropic reads at
