@@ -1,7 +1,7 @@
 """trim() mechanics: what gets trimmed, what is never touched, marker accounting."""
 import re
 
-from barber import trim, Cache
+from barber import trim, Cache, make_transform
 from barber.core import SelectionConfig
 
 # The locked default marker (benchmark-validated wording). If this assertion
@@ -167,17 +167,26 @@ def test_chunks_dropped_survives_a_warm_cache():
     assert counts[-1] == present.count(False)
 
 
-def test_tokens_saved_is_signed_when_markers_cost_more():
-    """Scattered drops emit one marker each, and a marker is ~20 tokens. When
-    the chunks are small that is a net loss, and clamping it to 0 made a real
-    regression indistinguishable from a clean no-op."""
+def test_costly_markers_leave_the_message_untouched():
+    """Scattered short drops can cost more than their markers save."""
     rows = "\n\n".join(f"row {i} alpha beta" if i % 2 else f"row {i} refund policy detail here"
                        for i in range(40))
     result = trim(msgs(rows, "refund policy?"), keep=0.5)
-    assert result.changed is True
-    assert result.chunks_dropped > 0
-    assert result.tokens_saved < 0, (
-        f"expected a net loss to surface as a negative, got {result.tokens_saved}")
+    assert not result.changed
+    assert result.messages[0]["content"] == rows
+    assert result.tokens_saved == result.chunks_dropped == 0
+
+    messages = [{"role": "tool", "content": rows},
+                {"role": "tool", "content": block(TOPICS)},
+                {"role": "user", "content": "refund policy?"}]
+    mixed = trim(messages, keep=0.5)
+    assert mixed.messages[0] is messages[0]
+    assert mixed.messages[1] is not messages[1]
+    assert mixed.tokens_saved > 0
+
+    _, transform = make_transform(keep=0.5)
+    transformed, changed = transform(messages)
+    assert changed and transformed[0] is messages[0]
 
 
 def test_changed_flag_matches_output():

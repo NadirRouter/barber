@@ -5,7 +5,7 @@ a subset back. barber's public call takes a message list and returns a message
 list, so this module is the map between the two:
 
     N document bodies  ->  one context block, blank-line separated
-    barber.trim(block + query)
+    score the block against the query with make_selection_transform
     trimmed block      ->  a keep/drop flag per document
 
 That block shape is not an arbitrary choice. It is exactly what the published
@@ -20,10 +20,10 @@ adapters import this; the tests can exercise it with the extras absent.
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from typing import Callable, Optional, Sequence
 
-from .. import trim
-from ..core import SelectionConfig
+from ..core import SelectionConfig, make_selection_transform
 
 __all__ = ["select_documents"]
 
@@ -71,17 +71,15 @@ def select_documents(
         at += len(body) + len(SEP)
     block = SEP.join(contents)
 
-    result = trim(
-        [{"role": "user", "content": block},
-         {"role": "user", "content": query}],
-        keep=keep,
-        embedder=embedder,
-        cfg=cfg,
-    )
-    if not result.changed:
+    effective = replace(cfg or SelectionConfig(), min_keep_ratio=keep,
+                        max_keep_ratio=keep)
+    _, select = make_selection_transform(embed_fn=embedder, cfg=effective)
+    out, changed = select([{"role": "user", "content": block},
+                           {"role": "user", "content": query}])
+    if not changed:
         return flags
 
-    trimmed = result.messages[0]["content"]
+    trimmed = out[0]["content"]
     marker = _marker_re((cfg or SelectionConfig()).drop_marker)
 
     kept = [False] * n

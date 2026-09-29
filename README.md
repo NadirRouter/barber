@@ -83,10 +83,9 @@ print(result.tokens_saved, result.chunks_dropped, result.changed)
 # result.messages is the same conversation, fewer tokens; send it to your LLM
 ```
 
-`tokens_saved` is signed. Each dropped run costs about 20 tokens of marker, so
-on blocks with many small, scattered chunks the markers can cost more than the
-drops save. A negative number is barber telling you this shape is not worth
-trimming, so skip it or raise `keep`.
+Each dropped run costs about 20 tokens of marker. If those markers cost at
+least as much as a message's dropped text saved, barber leaves that message
+untouched. `tokens_saved` is never negative.
 
 Semantic mode, the configuration the benchmark shipped with:
 
@@ -116,6 +115,22 @@ production traffic use the semantic embedder above (32K context window) or
 quality in the published runs. There is also
 `embedders.endpoint(base_url, model, api_key)` for any OpenAI compatible
 `/v1/embeddings` server (vLLM, TEI), which needs the `openai` package.
+
+For a local Jev-style decision scorer on Python 3.11+, install
+`decider-ai[gguf]` and select it explicitly:
+
+```python
+score = embedders.decider()  # Mapika/decider-4b-GGUF, Q4_K_M; downloads 2.7 GB
+try:
+    result = trim(messages, keep=0.6, embedder=score)
+finally:
+    score.close()
+```
+
+Decider scores all passages in one typed decision call. It needs more time and
+memory than BGE; [the paired trial](barber/eval/results/decider_hotpotqa_2026-09-29.md)
+shows the measured savings and answer-quality limits. Pass
+`gguf_options={"n_ctx": ...}` if you want to size its context explicitly.
 
 Multi-turn pipelines use the transform form. Pass a shared cache and a block is
 decided once, then replayed byte-identically on every later turn, so your
@@ -267,6 +282,17 @@ plain `trim()`:
   a line-numbered read is chunked on the blank lines of the underlying *file*,
   a diff on its hunks, flat output on line windows. A JSON body is never
   line-chunked, because half a JSON object does not parse.
+
+For shell tools, trim text before it reaches the agent's conversation:
+
+```bash
+nl -ba src/request.py | barber-trim --query "Where are request retries handled?"
+```
+
+`barber-trim` reads stdin and writes only the selected text to stdout. It uses
+the hook's conservative `keep=0.8` default and passes input through when
+trimming would save no tokens. Re-read a file if a dropped section is needed;
+the coding-agent path has not been tested for task success.
 
 Selection still only guesses relevance. In an agent transcript, most of the
 dead weight does not need a guess at all — it is content the transcript itself

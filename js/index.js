@@ -135,7 +135,19 @@ export function makeTransform({ embedder = null, keep = 0.6, cfg = null, cache =
     cfg: effective,
     decisionCache: cache,
   });
-  return ["barber", fn];
+  const onlySavings = (messages) => {
+    const [out, changed] = fn(messages);
+    if (!changed) return [out, false];
+    for (let i = 0; i < messages.length; i++) {
+      if (out[i] !== messages[i] &&
+          ntok(textOf(out[i].content, true)) >= ntok(textOf(messages[i].content, true))) {
+        out[i] = messages[i];
+      }
+    }
+    return [out, out.some((m, i) => m !== messages[i])];
+  };
+  Object.defineProperty(onlySavings, "lastStats", { get: () => fn.lastStats });
+  return ["barber", onlySavings];
 }
 
 // Trim query-irrelevant chunks out of an OpenAI-style message list.
@@ -157,18 +169,14 @@ export function makeTransform({ embedder = null, keep = 0.6, cfg = null, cache =
 // So context and question packed into ONE user message is a no-op: put the
 // context in its own earlier message.
 //
-// `tokensSaved` is signed. Negative means the markers cost more than the
-// dropped chunks saved, which is worth acting on rather than hiding.
+// A message is passed through when its markers cost at least as many estimated
+// tokens as the dropped chunks, so tokensSaved is never negative.
 //
 // Guards (lead/tail keep, deontic/PII pinning, rare-query-entity pinning,
 // relevance floor) are always on. Deterministic: same input, same output.
 export function trim(messages, { keep = 0.6, embedder = null, cfg = null, cache = null } = {}) {
   const effective = { ...DEFAULT_CONFIG, ...cfg, minKeepRatio: keep, maxKeepRatio: keep };
-  const [, fn] = makeSelectionTransform({
-    embedFn: embedder,
-    cfg: effective,
-    decisionCache: cache,
-  });
+  const [, fn] = makeTransform({ embedder, keep, cfg, cache });
   const [out, changed] = fn([...messages]);
   if (!changed) {
     // Nothing was substituted, so every message in `out` is the input object:

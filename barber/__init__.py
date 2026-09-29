@@ -22,7 +22,7 @@ from typing import Callable, Optional
 from .core import SelectionConfig, make_selection_transform
 from .core import _text_of
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = ["trim", "TrimResult", "make_transform", "Cache", "SelectionConfig", "__version__"]
 
@@ -99,9 +99,7 @@ class Cache:
 class TrimResult:
     messages: list          # trimmed messages (originals are not mutated)
     tokens_saved: int       # tiktoken o200k count if installed, len//4 fallback.
-                            # Signed: negative means trimming cost more than it
-                            # saved, which happens when drops are scattered and
-                            # each one emits its own marker.
+                            # Always positive when changed; zero for a no-op.
     chunks_dropped: int
     changed: bool
 
@@ -164,7 +162,20 @@ def make_transform(
     """
     cfg = replace(cfg or SelectionConfig(), min_keep_ratio=keep, max_keep_ratio=keep)
     _, fn = make_selection_transform(embed_fn=embedder, cfg=cfg, decision_cache=cache)
-    return ("barber", fn)
+
+    def only_savings(messages):
+        out, changed = fn(messages)
+        only_savings.last_stats = fn.last_stats
+        if not changed:
+            return out, False
+        ntok = _token_counter()
+        for i, (old, new) in enumerate(zip(messages, out)):
+            if old is not new and _count_tokens([new], ntok) >= _count_tokens([old], ntok):
+                out[i] = old
+        return out, any(a is not b for a, b in zip(out, messages))
+
+    only_savings.last_stats = fn.last_stats
+    return ("barber", only_savings)
 
 
 def trim(
@@ -196,8 +207,8 @@ def trim(
     context in its own earlier message. See "When barber does nothing" in the
     README.
 
-    `tokens_saved` is signed. Negative means the markers cost more than the
-    dropped chunks saved, which is worth acting on rather than hiding.
+    A message is passed through when its drop markers cost at least as many
+    tokens as the removed chunks. `tokens_saved` is therefore never negative.
 
     PASS A `cache` IN A MULTI-TURN LOOP. Without one, every call starts a fresh
     decision cache and re-selects each block against that turn's question — so
@@ -211,7 +222,7 @@ def trim(
     relevance floor) are always on. Deterministic: same input, same output.
     """
     effective = replace(cfg or SelectionConfig(), min_keep_ratio=keep, max_keep_ratio=keep)
-    _, fn = make_selection_transform(embed_fn=embedder, cfg=effective, decision_cache=cache)
+    _, fn = make_transform(embedder=embedder, keep=keep, cfg=cfg, cache=cache)
     out, changed = fn(list(messages))
     if not changed:
         # Nothing was substituted, so every message in `out` is the input object:

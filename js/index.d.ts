@@ -48,8 +48,7 @@ export interface TrimResult {
   /** Trimmed messages; originals are not mutated. */
   messages: Message[];
   /**
-   * Estimated tokens saved (code points / 4). Signed: negative means the
-   * drop markers cost more than the dropped chunks saved.
+   * Estimated tokens saved (code points / 4); never negative.
    */
   tokensSaved: number;
   chunksDropped: number;

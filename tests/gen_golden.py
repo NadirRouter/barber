@@ -294,7 +294,8 @@ S13_CTX = (
 # to cite sources by number needs these to survive on the passages that are kept.
 S14_CTX = (
     "[1] Standard shipping arrives in five to seven business days for domestic orders.\n"
-    "[2] Express shipping arrives next business day when ordered before the afternoon cutoff.\n"
+    "[2] Express shipping arrives next business day when ordered before the afternoon cutoff. "
+    "The warehouse team prints a blue label for every express parcel and loads it onto the early truck after the morning inventory scan.\n"
     "[3] The refund window is thirty days from delivery, measured by the carrier's timestamp.\n"
     "[4] Refunds are issued to the original payment method and post within two billing cycles.\n"
     "[5] International orders clear customs separately and are not covered by the delivery estimate.\n"
@@ -395,7 +396,7 @@ SCENARIOS = [
     {
         "name": "negative_savings",
         "keep": 0.8,
-        "wantChanged": True,
+        "wantChanged": False,
         "messages": [
             {"role": "user", "content": S5_CTX},
             {"role": "user", "content": "What happens in stage two of the data pipeline?"},
@@ -692,10 +693,10 @@ def sanity(cases: list) -> None:
     b = by["bankers_rounding"]["expected"]["messages"][0]["content"]
     assert S4_CHUNKS[3] not in b and S4_CHUNKS[1] in b and S4_CHUNKS[2] in b
 
-    # negative_savings: the marker costs more than the dropped chunk saved.
-    assert by["negative_savings"]["expected"]["tokensSaved"] < 0
+    # negative_savings: leave the message untouched when marker overhead wins.
+    assert by["negative_savings"]["expected"]["tokensSaved"] == 0
     real5 = by["negative_savings"]["expected"]["messages"][0]["content"]
-    assert S5_CHUNKS[2] not in real5
+    assert real5 == S5_CTX
 
     # emoji_length_gates: the trap block is >=800 UTF-16 units but <800 code
     # points, so Python skips it; a .length port would trim it.

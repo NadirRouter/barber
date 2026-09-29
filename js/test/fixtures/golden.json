@@ -1,5 +1,5 @@
 {
- "barberVersion": "0.6.0",
+ "barberVersion": "0.7.0",
  "cases": [
   {
    "cfg": null,
@@ -140,11 +140,11 @@
   {
    "cfg": null,
    "expected": {
-    "changed": true,
-    "chunksDropped": 1,
+    "changed": false,
+    "chunksDropped": 0,
     "messages": [
      {
-      "content": "Data pipeline runbook, stage by stage, maintained by the platform group; read the overview before touching production schedules or backfill windows, and record every manual action in the log.\n\nStage one ingests raw events from the collector fleet, validates schemas against the registry, and lands parquet files partitioned by hour into the bronze data bucket for downstream consumers.\n\n[\u2026 1 passage(s) omitted as not relevant to this question \u2014 the remaining context is sufficient \u2026]\n\nStage two compacts small files, deduplicates on event id, and publishes silver tables consumed by the metrics layer and the feature store refresh that runs every morning before standup.\n\nEscalation path: page the platform rotation for stage failures older than one hour, and file a ticket for anything recoverable by a scheduled backfill in the next maintenance window tonight.",
+      "content": "Data pipeline runbook, stage by stage, maintained by the platform group; read the overview before touching production schedules or backfill windows, and record every manual action in the log.\n\nStage one ingests raw events from the collector fleet, validates schemas against the registry, and lands parquet files partitioned by hour into the bronze data bucket for downstream consumers.\n\nTrivia: our first prototype ran on someone's spare laptop under a desk.\n\nStage two compacts small files, deduplicates on event id, and publishes silver tables consumed by the metrics layer and the feature store refresh that runs every morning before standup.\n\nEscalation path: page the platform rotation for stage failures older than one hour, and file a ticket for anything recoverable by a scheduled backfill in the next maintenance window tonight.",
       "role": "user"
      },
      {
@@ -152,7 +152,7 @@
       "role": "user"
      }
     ],
-    "tokensSaved": -6
+    "tokensSaved": 0
    },
    "keep": 0.8,
    "messages": [
@@ -620,12 +620,12 @@
       "role": "user"
      }
     ],
-    "tokensSaved": -3
+    "tokensSaved": 30
    },
    "keep": 0.5,
    "messages": [
     {
-     "content": "[1] Standard shipping arrives in five to seven business days for domestic orders.\n[2] Express shipping arrives next business day when ordered before the afternoon cutoff.\n[3] The refund window is thirty days from delivery, measured by the carrier's timestamp.\n[4] Refunds are issued to the original payment method and post within two billing cycles.\n[5] International orders clear customs separately and are not covered by the delivery estimate.\n",
+     "content": "[1] Standard shipping arrives in five to seven business days for domestic orders.\n[2] Express shipping arrives next business day when ordered before the afternoon cutoff. The warehouse team prints a blue label for every express parcel and loads it onto the early truck after the morning inventory scan.\n[3] The refund window is thirty days from delivery, measured by the carrier's timestamp.\n[4] Refunds are issued to the original payment method and post within two billing cycles.\n[5] International orders clear customs separately and are not covered by the delivery estimate.\n",
      "role": "user"
     },
     {

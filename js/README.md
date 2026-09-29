@@ -97,8 +97,8 @@ decides it, every later turn replays that decision byte-identically, so the
 stable prefix never mutates and the provider prompt cache stays warm. A plain
 `Map` also works and never evicts.
 
-`tokensSaved` is an estimate (code points / 4) and it is signed: negative
-means the drop markers cost more than the dropped chunks saved.
+`tokensSaved` is an estimate (code points / 4). A message is left untouched
+when its markers would erase the estimated saving, so it is never negative.
 
 ## When barber does nothing
 

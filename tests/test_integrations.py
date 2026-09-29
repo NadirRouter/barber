@@ -90,6 +90,16 @@ def test_deterministic():
     assert select_documents(TOPICS, QUERY) == select_documents(TOPICS, QUERY)
 
 
+def test_document_filter_still_drops_short_irrelevant_documents():
+    # Markers are only an internal mapping aid here; the returned list has no
+    # markers, so their cost must not prevent a profitable document drop.
+    docs = [f"row {i} refund policy detail here" if i % 2 == 0
+            else f"row {i} alpha beta" for i in range(40)]
+    flags = select_documents(docs, "refund policy?", keep=0.5)
+    assert all(flags[i] for i in range(0, 40, 2))
+    assert any(not flags[i] for i in range(1, 40, 2))
+
+
 def test_pinned_document_survives_an_aggressive_budget():
     docs = list(TOPICS)
     # deontic language is pinned (SelectionConfig.pin_patterns) even though this

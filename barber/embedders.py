@@ -85,6 +85,50 @@ def sentence_transformers(model_name: str = "BAAI/bge-small-en-v1.5",
     return embed
 
 
+def decider(model_name: str = "Mapika/decider-4b-GGUF",
+            gguf_file: str = "decider-4b-v2.1-Q4_K_M.gguf", gguf_options=None):
+    """Local typed relevance scorer (requires ``decider-ai[gguf]`` on Python 3.11+).
+
+    Create once and reuse across requests; call ``embed.close()`` when done.
+    Scores all passages in one call. ``gguf_options`` can set ``n_ctx`` for the
+    largest context you expect; the model's default is 40960 tokens.
+    """
+    import atexit
+    import threading
+    from decider.infer import Decider
+
+    model = Decider(model_name, gguf_file=gguf_file, gguf_options=gguf_options)
+    lock = threading.Lock()  # ponytail: one llama.cpp context; use one scorer per worker for parallel calls.
+
+    def close():
+        nonlocal model
+        with lock:
+            model = None
+
+    atexit.register(close)
+
+    def embed(texts):
+        chunks, query = texts[:-1], texts[-1]
+        with lock:
+            if model is None:
+                raise RuntimeError("Decider scorer is closed")
+            result = model.system_one(
+                {"question": query, "passages": [{"id": i, "text": chunk}
+                                              for i, chunk in enumerate(chunks)]},
+                {f"p{i}": {"type": "noul", "instructions":
+                    f"Is passage {i} needed to answer the question correctly, directly or as a bridge fact?"}
+                 for i in range(len(chunks))},
+                independent=False,
+            )
+        scores = [float(result["answers"][f"p{i}"]["noul"]) for i in range(len(chunks))]
+        if any(not math.isfinite(p) or not 0 <= p <= 1 for p in scores):
+            raise ValueError("Decider returned a probability outside [0, 1]")
+        return [[p, math.sqrt(1 - p * p)] for p in scores] + [[1.0, 0.0]]
+
+    embed.close = close
+    return embed
+
+
 def endpoint(base_url: str = "http://localhost:8000/v1",
              model: str = "BAAI/bge-small-en-v1.5",
              api_key: str = "EMPTY", batch_size: int = 64):

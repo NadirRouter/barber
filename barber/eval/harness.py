@@ -18,8 +18,8 @@ e.g. run the generator on Groq/DeepSeek/OpenRouter/your Nadir proxy while
 MiniMax judges, or point BOTH somewhere else. Defaults reproduce the published
 benchmark: MiniMax-M3 as both generator and judge.
 
-Ported from Nadir's validated selection_quality_test.py; the judge prompts,
-context construction, and metrics are unchanged.
+The judge prompts and context construction follow Nadir's benchmark. Selection
+uses Barber's public transform, and gold recall checks passage headings.
 """
 import os, re, json, random, argparse, hashlib
 random.seed(13)
@@ -34,7 +34,8 @@ except ImportError as e:  # pragma: no cover
         "Install with: pip install barber-llm[eval]"
     )
 
-from barber.core import make_selection_transform, SelectionConfig
+from barber import make_transform
+from barber.core import SelectionConfig
 from barber import embedders
 
 ENC = tiktoken.get_encoding("o200k_base")
@@ -198,6 +199,8 @@ def main():
     ap = argparse.ArgumentParser(prog="barber-eval")
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--keep", type=float, default=0.6, help="keep ratio for selection (benchmark default 0.6)")
+    ap.add_argument("--min-chars", type=int, default=200,
+                    help="minimum context length eligible for trimming (benchmark default 200)")
     ap.add_argument("--size", choices=["small", "medium", "large"], default="small",
                     help="context size: small=native ~1.3K tok, medium ~4K, large ~12K")
     ap.add_argument("--offset", type=int, default=0, help="dataset slice offset (use disjoint slices per run)")
@@ -246,7 +249,7 @@ def main():
     marker = ("[… {n} passage(s) omitted as not relevant to this question — the remaining context is sufficient …]"
               if args.marker == "assertive"
               else "[… {n} lower-relevance passage(s) omitted …]")
-    cfg = SelectionConfig(min_message_chars=200, min_chunks=4,
+    cfg = SelectionConfig(min_message_chars=args.min_chars, min_chunks=4,
                           max_keep_ratio=args.keep, min_keep_ratio=args.keep,
                           drop_marker=marker)
 
@@ -292,13 +295,14 @@ def main():
 
         # SELECTED context
         msgs = [{"role":"user","content":f"CONTEXT:\n\n{ctx_full}"}, {"role":"user","content":q}]
-        _, fn = make_selection_transform(embed_fn=embed, cfg=cfg)
+        _, fn = make_transform(embedder=embed, keep=args.keep, cfg=cfg)
         out, _ = fn(msgs)
-        ctx_sel = out[0]["content"].replace("CONTEXT:\n\n","")
+        ctx_sel = out[0]["content"].removeprefix("CONTEXT:\n\n")
 
         # gold recall: did selection keep the supporting paragraphs?
         for t in gold_titles:
-            gold_tot += 1; gold_kept += int(t in ctx_sel)
+            gold_tot += 1
+            gold_kept += bool(re.search(r"^\[\d+\] " + re.escape(t) + ":", ctx_sel, re.M))
 
         tok_full += ntok(ctx_full); tok_sel += ntok(ctx_sel)
 
@@ -327,7 +331,7 @@ def main():
                        "answer_full": ans_ctrl, "answer_selected": ans_treat,
                        "grade_full": cg, "grade_selected": tg,
                        "materially_worse": bool(tw), "judge_reason": reason,
-                       "size": args.size, "keep": args.keep,
+                       "size": args.size, "keep": args.keep, "min_chars": args.min_chars,
                        "embedder": args.embedder, "marker": args.marker,
                        "judge_model": JUDGE_MODEL, "gen_model": GEN_MODEL},
                       out_fh, ensure_ascii=False)
@@ -348,7 +352,7 @@ def main():
         print("whose replies never parse as JSON (run --baseline first to sanity-check).")
         print("="*60)
         return
-    print(f"size={args.size}  keep_ratio={args.keep}  n_judged={judged}  judge_parse_dropped={getattr(main,'_dropped',0)}  gen_truncated={getattr(chat,'truncated',0)}  avg_ctx_tokens={tok_full//max(1,judged)}")
+    print(f"size={args.size}  keep_ratio={args.keep}  min_chars={args.min_chars}  n_judged={judged}  judge_parse_dropped={getattr(main,'_dropped',0)}  gen_truncated={getattr(chat,'truncated',0)}  avg_ctx_tokens={tok_full//max(1,judged)}")
     print(f"tokens saved:            {(1-tok_sel/tok_full)*100:5.1f}%")
     print(f"gold-paragraph recall:   {gold_kept/max(1,gold_tot)*100:5.1f}%")
     print(f"control accuracy:        {ctrl_correct/judged*100:5.1f}%")
